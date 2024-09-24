@@ -9,8 +9,5 @@ int main() {
 	result->read_data("result.txt");
 	result->write_atk();
 
-	
-
-	
 	return 0;
 }
