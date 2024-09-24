@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.10.35122.118
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CTOC13-ATK", "CTOC13-ATK.vcxproj", "{074305BA-39D4-4E75-B50A-923BB32B855A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{074305BA-39D4-4E75-B50A-923BB32B855A}.Debug|x64.ActiveCfg = Debug|x64
+		{074305BA-39D4-4E75-B50A-923BB32B855A}.Debug|x64.Build.0 = Debug|x64
+		{074305BA-39D4-4E75-B50A-923BB32B855A}.Debug|x86.ActiveCfg = Debug|Win32
+		{074305BA-39D4-4E75-B50A-923BB32B855A}.Debug|x86.Build.0 = Debug|Win32
+		{074305BA-39D4-4E75-B50A-923BB32B855A}.Release|x64.ActiveCfg = Release|x64
+		{074305BA-39D4-4E75-B50A-923BB32B855A}.Release|x64.Build.0 = Release|x64
+		{074305BA-39D4-4E75-B50A-923BB32B855A}.Release|x86.ActiveCfg = Release|Win32
+		{074305BA-39D4-4E75-B50A-923BB32B855A}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {58446265-765C-4DD0-B6DE-C0FD9D5E5D7E}
+	EndGlobalSection
+EndGlobal
