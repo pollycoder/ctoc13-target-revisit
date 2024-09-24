@@ -78,18 +78,12 @@ void ResultData::create_sateliite(const std::string id, std::string& sat_path) c
 void ResultData::add_initialstate(const std::vector<double> initial_coe, const std::string sat_path) const{
 	// Set ATK commands
 	std::string set_initialstate_command = sat_path + space + "SetValue MainSequence.SegmentList.Initial_State.CoordinateType Keplerian";
-	std::string add_initialstate_sma_command = sat_path + space + "SetValue MainSequence.SegmentList.Initial_State.InitialState.Keplerian.sma" 
-											   + space + std::to_string(initial_coe[0]) + space + "km";
-	std::string add_initialstate_ecc_command = sat_path + space + "SetValue MainSequence.SegmentList.Initial_State.InitialState.Keplerian.ecc"
-											   + space + std::to_string(initial_coe[1]);
-	std::string add_initialstate_inc_command = sat_path + space + "SetValue MainSequence.SegmentList.Initial_State.InitialState.Keplerian.inc"
-											   + space + std::to_string(initial_coe[2]) + space + "rad";
-	std::string add_initialstate_RAAN_command = sat_path + space + "SetValue MainSequence.SegmentList.Initial_State.InitialState.Keplerian.RAAN" 
-											   + space + std::to_string(initial_coe[3]) + space + "rad";
-	std::string add_initialstate_w_command = sat_path + space + "SetValue MainSequence.SegmentList.Initial_State.InitialState.Keplerian.w"
-											   + space + std::to_string(initial_coe[4]) + space + "rad";
-	std::string add_initialstate_ta_command = sat_path + space + "SetValue MainSequence.SegmentList.Initial_State.InitialState.Keplerian.ta" 
-											   + space + std::to_string(initial_coe[5]) + space + "rad";
+	std::string add_initialstate_sma_command = sat_path + space + "SetValue MainSequence.SegmentList.Initial_State.InitialState.Keplerian.sma" + space + std::to_string(initial_coe[0]) + space + "km";
+	std::string add_initialstate_ecc_command = sat_path + space + "SetValue MainSequence.SegmentList.Initial_State.InitialState.Keplerian.ecc" + space + std::to_string(initial_coe[1]);
+	std::string add_initialstate_inc_command = sat_path + space + "SetValue MainSequence.SegmentList.Initial_State.InitialState.Keplerian.inc" + space + std::to_string(initial_coe[2]) + space + "rad";
+	std::string add_initialstate_RAAN_command = sat_path + space + "SetValue MainSequence.SegmentList.Initial_State.InitialState.Keplerian.RAAN" + space + std::to_string(initial_coe[3]) + space + "rad";
+	std::string add_initialstate_w_command = sat_path + space + "SetValue MainSequence.SegmentList.Initial_State.InitialState.Keplerian.w" + space + std::to_string(initial_coe[4]) + space + "rad";
+	std::string add_initialstate_ta_command = sat_path + space + "SetValue MainSequence.SegmentList.Initial_State.InitialState.Keplerian.ta" + space + std::to_string(initial_coe[5]) + space + "rad";
 
 	// Add the data
 	atkConnect(conID_, "Astrogator", set_initialstate_command);
