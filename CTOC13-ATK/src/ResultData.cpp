@@ -25,9 +25,7 @@ void ResultData::read_data(const std::string filename) {
 	while (std::getline(file, line)) {
 		std::istringstream iss(line);
 		std::vector<double> initial_coe(6);
-		for (double& val : initial_coe) {
-			iss >> val;
-		}
+		for (double& val : initial_coe) iss >> val;
 
 		std::vector<double> impulse_t_list;
 		std::vector<std::vector<double>> impulse_list;
@@ -35,15 +33,12 @@ void ResultData::read_data(const std::string filename) {
 			std::istringstream iss_impulse(line);
 			std::vector<double> impulse_data;
 			double value;
-			while (iss_impulse >> value) {
-				impulse_data.push_back(value);
-			}
+			while (iss_impulse >> value) impulse_data.push_back(value);
 
 			if (impulse_data.size() == 4) {
 				impulse_t_list.push_back(impulse_data[0]);
 				impulse_list.push_back({ impulse_data[1], impulse_data[2], impulse_data[3] });
-			}
-			else if (impulse_data.size() == 6) {
+			} else if (impulse_data.size() == 6) {
 				// Push the current satellite data to the vector
 				SatelliteData* sat = new SatelliteData();
 				sat->set_value(initial_coe, impulse_t_list, impulse_list);
@@ -61,7 +56,6 @@ void ResultData::read_data(const std::string filename) {
 		add_sat(sat);
 	}
 }
-
 
 void ResultData::write_atk() {
 	conID_ = atkOpen();
@@ -121,19 +115,22 @@ void ResultData::add_impulse(const std::vector<double> impulse_cartesian, const 
 	double dvx = impulse_cartesian[0];
 	double dvy = impulse_cartesian[1];
 	double dvz = impulse_cartesian[2];
+
+	// Add impulse, if this is the first impulse, there is no maneuver id, or else there should be one
+	atkConnect(conID_, "Astrogator", sat_path + space + "InsertSegment MainSequence.SegmentList.- Maneuver");
+
+	// Set the commands
+	std::string set_impulseAxis = sat_path + space + "SetValue MainSequence.SegmentList.Maneuver" + manuv_id + ".ImpulsiveMnvr.ThrustAxes Satellite_VNC(Earth)";
+	std::string set_impulseValueX = sat_path + space + "SetValue MainSequence.SegmentList.Maneuver" + manuv_id + ".ImpulsiveMnvr.Cartesian.X" + space + std::to_string(dvx) + "km/sec";
+	std::string set_impulseValueY = sat_path + space + "SetValue MainSequence.SegmentList.Maneuver" + manuv_id + ".ImpulsiveMnvr.Cartesian.Y" + space + std::to_string(dvy) + "km/sec";
+	std::string set_impulseValueZ = sat_path + space + "SetValue MainSequence.SegmentList.Maneuver" + manuv_id + ".ImpulsiveMnvr.Cartesian.Z" + space + std::to_string(dvz) + "km/sec";
+
 	// Set the coordinates of maneuver
-	atkConnect(conID_, "Astrogator", sat_path + space + "SetValue MainSequence.SegmentList.Maneuver"
-									 + manuv_id + ".ImpulsiveMnvr.ThrustAxes Satellite_VNC(Earth)");
+	atkConnect(conID_, "Astrogator", set_impulseAxis);
 	// X,Y,Z components
-	atkConnect(conID_, "Astrogator", sat_path + space + "SetValue MainSequence.SegmentList.Maneuver" 
-									 + manuv_id + ".ImpulsiveMnvr.Cartesian.X"
-									 + space + std::to_string(dvx) + "km/sec");
-	atkConnect(conID_, "Astrogator", sat_path + space + "SetValue MainSequence.SegmentList.Maneuver" 
-									 + manuv_id + ".ImpulsiveMnvr.Cartesian.Y"
-									 + space + std::to_string(dvy) + "km/sec");
-	atkConnect(conID_, "Astrogator", sat_path + space + "SetValue MainSequence.SegmentList.Maneuver"
-									 + manuv_id + ".ImpulsiveMnvr.Cartesian.Z"
-									 + space + std::to_string(dvz) + "km/sec");
+	atkConnect(conID_, "Astrogator", set_impulseValueX);
+	atkConnect(conID_, "Astrogator", set_impulseValueY);
+	atkConnect(conID_, "Astrogator", set_impulseValueZ);
 }
 
 // Wrtie the data of one satellite into ATK
@@ -146,7 +143,7 @@ void ResultData::write_single_sat(SatelliteData* sat, const int conID, const int
 	std::vector<std::vector<double>> impulse_list = sat->get_impulse_list();
 	std::vector<double> initial_coe = sat->get_initial_coe();
 
-	// Create new satellite
+	// Create a new satellite
 	create_sateliite(id, sat_path);
 	std::cout << id << space << sat_path << std::endl;
 
@@ -161,8 +158,6 @@ void ResultData::write_single_sat(SatelliteData* sat, const int conID, const int
 	add_propagator(duration_time, sat_path, "");
 
 	for (int i = 0; i < impulse_t_list.size(); i++) {
-		// Add impulse, if this is the first impulse, there is no maneuver id, or else there should be one
-		atkConnect(conID, "Astrogator", sat_path + space + "InsertSegment MainSequence.SegmentList.- Maneuver");
 		if (i != 0) {
 			std::string manuv_id = std::to_string(i);
 			add_impulse(impulse_list[i], sat_path, manuv_id);

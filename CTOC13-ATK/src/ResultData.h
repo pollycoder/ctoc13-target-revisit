@@ -25,7 +25,6 @@ private:
 	std::vector<double> impulse_t_list_;																	// Impulse time list (s)
 	std::vector<std::vector<double>> impulse_list_;														// Impulse list (km, s)
 	
-
 // Constructor and destructor
 public:
 	SatelliteData() = default;
@@ -33,7 +32,6 @@ public:
 
 // Functions: set value and get value, in order to protect the data
 public:
-
 	// Set value
 	void set_value(const std::vector<double>, const std::vector<double>, const std::vector<std::vector<double>>);
 
@@ -71,7 +69,6 @@ public:
 // Write into ATK
 public:
 	void read_data(const std::string);
-	
 	void write_atk();
 
 private:
