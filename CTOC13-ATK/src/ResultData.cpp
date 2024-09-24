@@ -99,8 +99,7 @@ void ResultData::add_initialstate(const std::vector<double> initial_coe, const s
 void ResultData::add_propagator(const double duration_time, const std::string sat_path, const std::string prop_id) const {
 	atkConnect(conID_, "Astrogator", sat_path + space + "InsertSegment MainSequence.SegmentList.- Propagate");
 	atkConnect(conID_, "Astrogator", sat_path + space + "SetValue MainSequence.SegmentList.Propagate" + prop_id + ".StoppingConditions Duration");
-	atkConnect(conID_, "Astrogator", sat_path + space + "SetValue MainSequence.SegmentList.Propagate" + prop_id + ".StoppingConditions.Duration.TripValue"
-									+ space + std::to_string(duration_time) + space + "sec");
+	atkConnect(conID_, "Astrogator", sat_path + space + "SetValue MainSequence.SegmentList.Propagate" + prop_id + ".StoppingConditions.Duration.TripValue" + space + std::to_string(duration_time) + space + "sec");
 }
 
 
