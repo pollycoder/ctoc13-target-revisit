@@ -147,29 +147,35 @@ void ResultData::write_single_sat(SatelliteData* sat, const int conID, const int
 	add_initialstate(initial_coe, sat_path);
 
 	// First propagating segment
-	double duration_time = impulse_t_list[0];
-	add_propagator(duration_time, sat_path, "");
+	if (!impulse_t_list.empty()) {
+		double duration_time = impulse_t_list[0];
+		add_propagator(duration_time, sat_path, "");
 
-	for (int i = 0; i < impulse_t_list.size(); i++) {
-		if (i != 0) {
-			std::string manuv_id = std::to_string(i);
-			add_impulse(impulse_list[i], sat_path, manuv_id);
-		} else {
-			std::string manuv_id = "";
-			add_impulse(impulse_list[i], sat_path, manuv_id);
-		}
+		for (int i = 0; i < impulse_t_list.size(); i++) {
+			if (i != 0) {
+				std::string manuv_id = std::to_string(i);
+				add_impulse(impulse_list[i], sat_path, manuv_id);
+			}
+			else {
+				std::string manuv_id = "";
+				add_impulse(impulse_list[i], sat_path, manuv_id);
+			}
 
-		// Add propagator, if this is the last impulse, the duration time should be t_final - t_imp
-		if (i != impulse_t_list.size()-1) {
-			std::string prop_id = std::to_string(i+1);
-			duration_time = impulse_t_list[i+1] - impulse_t_list[i];
-			add_propagator(duration_time, sat_path, prop_id);
+			// Add propagator, if this is the last impulse, the duration time should be t_final - t_imp
+			if (i != impulse_t_list.size() - 1) {
+				std::string prop_id = std::to_string(i + 1);
+				duration_time = impulse_t_list[i + 1] - impulse_t_list[i];
+				add_propagator(duration_time, sat_path, prop_id);
+			}
+			else {
+				std::string prop_id = std::to_string(i + 1);
+				duration_time = TwoDays - impulse_t_list[i];
+				add_propagator(duration_time, sat_path, prop_id);
+			}
 		}
-		else {
-			std::string prop_id = std::to_string(i+1);
-			duration_time = TwoDays - impulse_t_list[i];
-			add_propagator(duration_time, sat_path, prop_id);
-		}
+	} else {
+		double duration_time = TwoDays;
+		add_propagator(duration_time, sat_path, "");
 	}
 
 	atkConnect(conID_, "Astrogator", sat_path + space + "RunMCS");
