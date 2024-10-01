@@ -104,7 +104,7 @@ const double i_max = DPI;
 
 const double penalty = 1.0e6;
 
-const int TreeNum = 1;
+const int TreeNum = 2;
 const int TargetNum = 21;
 
 const int GapNum = 26;

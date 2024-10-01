@@ -383,13 +383,20 @@ void get_score_data(const std::vector<double>& X, const double* para, double* dv
 	const double dv0[3] = { para[11], para[12], para[13] };
 
 	// Perturbation
-	dv[0] = dv0[0] + (X[0] - 0.5) * 0.02;
-	dv[1] = dv0[1] + (X[1] - 0.5) * 0.02;
-	dv[2] = dv0[2] + (X[2] - 0.5) * 0.02;
-	tf += (X[3] - 0.5) * hour;															// Time: ¡À0.5h
+	dv[0] = dv0[0] + (X[0] - 0.5) * 1e3;
+	dv[1] = dv0[1] + (X[1] - 0.5) * 1e3;
+	dv[2] = dv0[2] + (X[2] - 0.5) * 1e3;
+	tf += (X[3] - 0.5) * hour * 1e3;															// Time: ¡À0.5h
 
 	// Observing time: if the time is too far away from the time stamp, return penalty
-	if (fabs(time_stamp - tf) > 0.5 * hour) { dv[0] = penalty; dv[1] = penalty; dv[2] = penalty; return; }
+	if (fabs(time_stamp - tf) > 1.0 * hour) {
+		for (int j = 0; j < 3; j++) {
+			dv[j] = penalty;
+			rvf[j] = penalty; rvf[j + 3] = penalty;
+			tf = penalty;
+		}
+		return;
+	}
 
 	// Add impulse and propagate
 	double v0[3] = { rv0[3], rv0[4], rv0[5] };
@@ -412,6 +419,12 @@ void get_score_data(const std::vector<double>& X, const double* para, double* dv
 		}
 		return; 
 	}
+	/*else {
+		std::cout << "Succeed." << std::endl;
+		for (int j = 0; j < 6; j++) {
+			std::cout << "rvf[" << j << "] = " << rvf[j] << std::endl;
+		}
+	}*/
 }
 
 
@@ -428,8 +441,17 @@ void shooting_target2target(const double t0, const double* rv0, const double tim
 	double impulse = 1.0e6;
 	for (int dv_sign = -1; dv_sign < 2; dv_sign += 2) {
 		single_imp(m0, t0, rv0, lambda0, phi0, 1, flag, mf, tf, dv, NR, branch, dv_sign);
+		if (flag == 0) {
+			tf = penalty;
+			for (int i = 0; i < 3; i++) {
+				dv[i] = penalty;
+				rvf[i] = penalty;
+				rvf[i + 3] = penalty;
+			}
+			continue;
+		}
 		tf += t0;																	
-		double f_data[14] = { t0, t0 + tf, rv0[0], rv0[1], rv0[2], rv0[3], rv0[4], rv0[5], lambda0, phi0, time_stamp, dv[0], dv[1], dv[2] };
+		double f_data[14] = { t0, tf, rv0[0], rv0[1], rv0[2], rv0[3], rv0[4], rv0[5], lambda0, phi0, time_stamp, dv[0], dv[1], dv[2] };
 		std::vector<double> X = { 0.5, 0.5, 0.5, 0.5 };
 		nlopt_main(obj_func, f_data, X, impulse_temp, 4);
 

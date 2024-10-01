@@ -510,7 +510,7 @@ void MultiTree::Run()
 
 		RecordBestResult(expandinglist,fout0);			//记录最好信息
 
-		if (layer_ == CityNum)
+		if (layer_ == GapNum)
 		{
 			std::vector<TNC> x;
 			RecordBestResult(x, fout0);			         //记录最好信息
