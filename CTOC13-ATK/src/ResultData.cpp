@@ -114,9 +114,9 @@ void ResultData::add_impulse(const std::vector<double> impulse_cartesian, const 
 
 	// Set the commands
 	std::string set_impulseAxis = sat_path + space + "SetValue MainSequence.SegmentList.Maneuver" + manuv_id + ".ImpulsiveMnvr.ThrustAxes Satellite_VNC(Earth)";
-	std::string set_impulseValueX = sat_path + space + "SetValue MainSequence.SegmentList.Maneuver" + manuv_id + ".ImpulsiveMnvr.Cartesian.X" + space + std::to_string(dvx) + "km/sec";
-	std::string set_impulseValueY = sat_path + space + "SetValue MainSequence.SegmentList.Maneuver" + manuv_id + ".ImpulsiveMnvr.Cartesian.Y" + space + std::to_string(dvy) + "km/sec";
-	std::string set_impulseValueZ = sat_path + space + "SetValue MainSequence.SegmentList.Maneuver" + manuv_id + ".ImpulsiveMnvr.Cartesian.Z" + space + std::to_string(dvz) + "km/sec";
+	std::string set_impulseValueX = sat_path + space + "SetValue MainSequence.SegmentList.Maneuver" + manuv_id + ".ImpulsiveMnvr.Cartesian.X" + space + std::to_string(dvx) + space + "km/sec";
+	std::string set_impulseValueY = sat_path + space + "SetValue MainSequence.SegmentList.Maneuver" + manuv_id + ".ImpulsiveMnvr.Cartesian.Y" + space + std::to_string(dvy) + space + "km/sec";
+	std::string set_impulseValueZ = sat_path + space + "SetValue MainSequence.SegmentList.Maneuver" + manuv_id + ".ImpulsiveMnvr.Cartesian.Z" + space + std::to_string(dvz) + space + "km/sec";
 
 	// Set the coordinates of maneuver
 	atkConnect(conID_, "Astrogator", set_impulseAxis);
