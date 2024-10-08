@@ -68,6 +68,25 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 	int& flag0, double& mf, double& tf, double* dv, int& NR);
 
 
+//CTOC13：单脉冲机动(指定天数的最小脉冲解)
+//输入：
+//		m0:			初始质量，kg
+//		t0:			初始（脉冲）时刻，s
+//		rv0[6]:		卫星初始位置速度，km，km/s
+//		lambda:		目标点的地面经度，rad
+//		phi:		目标点的地面纬度，rad
+//		dt:			指定的飞行时间
+//输出：
+//		flag:		计算成功返回1，否则返回0
+//		mf:			机动后卫星质量，kg
+//		tf:			飞行时长，s
+//		dv[3]:		脉冲速度增量，km/s
+//		NR:			转移圈数
+void single_imp(const double m0, const double t0, const double* rv0, const double lambda0, const double phi0, const double dt,
+	int& flag0, double& mf, double& tf, double* dv, int& NR, const int branch, const int sign);
+
+
+
 
 //CTOC13: 动力学模型替代
 //优化切向脉冲，使之仍然保持可见且尽量最小（局部优化）
@@ -105,5 +124,21 @@ void get_score_data(const std::vector<double>& X, const double* para, double* dv
 //		dv[3]：打靶之后的脉冲向量
 //		rvf：观测下一个目标时卫星的地心惯性系位置速度，供下一次打靶填补观测缺漏使用
 void shooting_target2target(const double t0, const double* rv0, const double time_stamp, const double lambda0, const double phi0, double& tf, double* dv, double* rv, const int& branch);
+
+
+//CTOC13：获取用来搜索的最佳初始轨道根数
+//计算无机动情况下，时刻表上所有点平均经纬度误差最小的初始轨道根数
+//输入：
+//		gap_list[2][26]：时刻表
+//	    X：优化变量
+//输出：
+//		coe0[6]：最优初始轨道根数
+//		average_err：平均经纬度误差（指标）
+void optpara_2_real_mission(const std::vector<double>& X, const int sat_num, std::vector<std::vector<double>>& coe_chief);
+double obj_func_initial_coe(const std::vector<double>& X, std::vector<double>& grad, void* f_data);
+void get_initial_coe(const std::vector<double>& X, double* coe0, double& average_err);
+
+
+
 
 #endif // !SINGLE_IMPLUSE_H

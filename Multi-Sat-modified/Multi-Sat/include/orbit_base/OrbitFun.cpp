@@ -1121,193 +1121,193 @@ int dynODE_j2(double t, const double* y, double* yp, const double* para)
 
 /**************************************************************************************************************************************/
 
-// 推荐
-void J2Lambert_Approximation1(int& flag, double* dv0, double* dv1, double& Mdv0, double& Mdv1, int& N, int& branch,
-	const double* rv0, const double* rv1, double t, double mu)
-{
-	const int n = 3, niter = 12;
-	double Eps[niter] = { 0.0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0 };
-	double fvec[n] = { 0, 0, 0 }, coeo0[6], coeof[6];
-	double tol = 10, dV0[3], rv[6];
-	double para[13], wa[int((n * (3 * n + 13)) / 2)], xtol = 1.0e-8;
-	int iflag;
-	//ODE45 ODE6(6);
-
-	LambEval(flag, dv0, dv1, Mdv0, Mdv1, N, branch, rv0, rv1, t, muEarth);
-	if (flag == 1)
-		V_Copy(dV0, dv0, 3);
-	//else
-	//	cout<<"求解多圈Lambert问题失败(不考虑J2摄动)"<<endl;
-
-	V_Copy(para, rv0, 6);
-	V_Copy(&para[6], rv1, 6);
-	para[12] = t;
-	//double intpara[3] = {muEarth, J2, Re};
-	//double RKFWork[14*6], t0 = 0.0;
-	//double RelTol = 1.0e-10, AbsTol[6];
-	//for(int j=0;j<6;j++)
-	//	AbsTol[j] = 1.0e-10;
-	//int RKFiflag=1;
-
-	flag = hybrd1(Fun_J2Lambert_Approximation, n, dv0, fvec, para, wa, xtol, 0, 200);
-	if (flag > 0 && enorm(n, fvec) < tol)
-	{
-		Mdv0 = V_Norm2(dv0, 3);
-		V_Copy(rv, rv0, 6);
-		V_Add(&rv[3], &rv[3], dv0, 3);
-		rv2coe(flag, coeo0, rv);
-		j2ocoe02ocoef(coeof, coeo0, t);
-		coe2rv(flag, rv, coeof);
-		V_Minus(dv1, &rv1[3], &rv[3], 3);
-		Mdv1 = V_Norm2(dv1, 3);
-		return;
-	}
-	else
-	{
-		/*
-		V_Copy(dv0, dV0, 3);
-		for(int i=0;i<niter;i++)
-		{
-			para[13] = Eps[i];
-			flag = hybrd1(Fun_J2Lambert, n, dv0, fvec, para, wa, xtol, 0, 200);
-			if(flag<0||enorm(n,fvec)>=tol)
-			{
-				cout<<"无法同伦求解J2Lambert问题"<<endl;
-				Mdv0 = 10e10;
-				Mdv1 = 10e10;
-				return;
-			}
-		}
-		Mdv0 = V_Norm2(dv0,3);
-		V_Copy(rv, rv0, 6);
-		V_Add(&rv[3],&rv[3],dv0,3);
-		//iflag = RK::RKF78(dynRK_j2, rv, intpara, t0, t0+t, 6, RelTol, AbsTol, RKFiflag, RKFWork, 100000, NULL);
-		iflag = ODE6.Integrate(dynODE_j2, rv, intpara, 0, t, NULL);
-		if(flag!=1)                     //检查ODE45积分是否成功
-			cout<<"Integral error"<<endl;
-
-		V_Minus(dv1,&rv1[3],&rv[3],3);
-		Mdv1 = V_Norm2(dv1,3);
-		*/
-
-		Mdv0 = 10e10;
-		Mdv1 = 10e10;
-		return;
-	}
-}
-
-void J2Lambert_Approximation2(int& flag, double* dv0, double* dv1, double& Mdv0, double& Mdv1, int& N, int& branch,
-	const double* rv0, const double* rv1, double t, double mu)
-{
-	const int n = 3, niter = 12;
-	double Eps[niter] = { 0.0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0 };
-	double fvec[n] = { 0, 0, 0 }, coeo0[6], coeof[6];
-	double tol = 10, dV0[3], rv[6];
-	double para[13], wa[int((n * (3 * n + 13)) / 2)], xtol = 1.0e-8;
-	int iflag;
-	//ODE45 ODE6(6);
-
-	LambEval2(flag, dv0, dv1, Mdv0, Mdv1, N, branch, rv0, rv1, t, muEarth);
-	if (flag == 1)
-		V_Copy(dV0, dv0, 3);
-	//else
-	//	cout<<"求解多圈Lambert问题失败(不考虑J2摄动)"<<endl;
-
-	V_Copy(para, rv0, 6);
-	V_Copy(&para[6], rv1, 6);
-	para[12] = t;
-	//double intpara[3] = {muEarth, J2, Re};
-	//double RKFWork[14*6], t0 = 0.0;
-	//double RelTol = 1.0e-10, AbsTol[6];
-	//for(int j=0;j<6;j++)
-	//	AbsTol[j] = 1.0e-10;
-	//int RKFiflag=1;
-
-	flag = hybrd1(Fun_J2Lambert_Approximation, n, dv0, fvec, para, wa, xtol, 0, 200);
-	if (flag > 0 && enorm(n, fvec) < tol)
-	{
-		Mdv0 = V_Norm2(dv0, 3);
-		V_Copy(rv, rv0, 6);
-		V_Add(&rv[3], &rv[3], dv0, 3);
-		rv2coe(flag, coeo0, rv);
-		j2ocoe02ocoef(coeof, coeo0, t);
-		coe2rv(flag, rv, coeof);
-		V_Minus(dv1, &rv1[3], &rv[3], 3);
-		Mdv1 = V_Norm2(dv1, 3);
-		return;
-	}
-	else
-	{
-		/*
-		V_Copy(dv0, dV0, 3);
-		for(int i=0;i<niter;i++)
-		{
-			para[13] = Eps[i];
-			flag = hybrd1(Fun_J2Lambert, n, dv0, fvec, para, wa, xtol, 0, 200);
-			if(flag<0||enorm(n,fvec)>=tol)
-			{
-				cout<<"无法同伦求解J2Lambert问题"<<endl;
-				Mdv0 = 10e10;
-				Mdv1 = 10e10;
-				return;
-			}
-		}
-		Mdv0 = V_Norm2(dv0,3);
-		V_Copy(rv, rv0, 6);
-		V_Add(&rv[3],&rv[3],dv0,3);
-		//iflag = RK::RKF78(dynRK_j2, rv, intpara, t0, t0+t, 6, RelTol, AbsTol, RKFiflag, RKFWork, 100000, NULL);
-		iflag = ODE6.Integrate(dynODE_j2, rv, intpara, 0, t, NULL);
-		if(flag!=1)                     //检查ODE45积分是否成功
-			cout<<"Integral error"<<endl;
-
-		V_Minus(dv1,&rv1[3],&rv[3],3);
-		Mdv1 = V_Norm2(dv1,3);
-		*/
-
-		Mdv0 = 10e10;
-		Mdv1 = 10e10;
-		return;
-	}
-}
-
-/**************************************************************************************************************************************/
-/*********************************************************考虑j2的Lambert问题精确解****************************************************/
-/**************************************************************************************************************************************/
-
-void j2mcoe02mcoef_eJ2(const double* me0, const double dt, const double J2, double* mef)
-{
-	double a2 = me0[0] * me0[0];
-	double a3 = a2 * me0[0];
-	double e2 = me0[1] * me0[1];
-	double n = sqrt(muEarth / a3);
-	double p = me0[0] * (1 - e2);
-	double p2 = p * p;
-	double JRPn = J2 * Re * Re / p2 * n;
-	double ci = cos(me0[2]);
-	double ci2 = ci * ci;
-	double dOmega = -1.5 * JRPn * ci;
-	double domega = 0.75 * JRPn * (5 * ci2 - 1);
-	double dm = n + 0.75 * JRPn * sqrt(1 - e2) * (3 * ci2 - 1);
-	mef[0] = me0[0];
-	mef[1] = me0[1];
-	mef[2] = me0[2];
-	mef[3] = me0[3] + dOmega * dt;
-	mef[4] = me0[4] + domega * dt;
-	mef[5] = me0[5] + dm * dt;
-}
-
-int Fun_J2Lambert_Approximation(int n, const double* x, double* fvec, int iflag, const double* para)
-{
-	double rv[6], coeo0[6], coeof[6], t = para[12];
-	int flag;
-	V_Copy(rv, para, 6);
-	V_Add(&rv[3], &rv[3], x, 3);
-
-	rv2coe(flag, coeo0, rv);
-	j2ocoe02ocoef(coeof, coeo0, t);
-	coe2rv(flag, rv, coeof);
-
-	for (int i = 0; i < n; i++)
-		fvec[i] = rv[i] - para[i + 6];
-	return 1;
-}
+//// 推荐
+//void J2Lambert_Approximation1(int& flag, double* dv0, double* dv1, double& Mdv0, double& Mdv1, int& N, int& branch,
+//	const double* rv0, const double* rv1, double t, double mu)
+//{
+//	const int n = 3, niter = 12;
+//	double Eps[niter] = { 0.0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0 };
+//	double fvec[n] = { 0, 0, 0 }, coeo0[6], coeof[6];
+//	double tol = 10, dV0[3], rv[6];
+//	double para[13], wa[int((n * (3 * n + 13)) / 2)], xtol = 1.0e-8;
+//	int iflag;
+//	//ODE45 ODE6(6);
+//
+//	LambEval(flag, dv0, dv1, Mdv0, Mdv1, N, branch, rv0, rv1, t, muEarth);
+//	if (flag == 1)
+//		V_Copy(dV0, dv0, 3);
+//	//else
+//	//	cout<<"求解多圈Lambert问题失败(不考虑J2摄动)"<<endl;
+//
+//	V_Copy(para, rv0, 6);
+//	V_Copy(&para[6], rv1, 6);
+//	para[12] = t;
+//	//double intpara[3] = {muEarth, J2, Re};
+//	//double RKFWork[14*6], t0 = 0.0;
+//	//double RelTol = 1.0e-10, AbsTol[6];
+//	//for(int j=0;j<6;j++)
+//	//	AbsTol[j] = 1.0e-10;
+//	//int RKFiflag=1;
+//
+//	flag = hybrd1(Fun_J2Lambert_Approximation, n, dv0, fvec, para, wa, xtol, 0, 200);
+//	if (flag > 0 && enorm(n, fvec) < tol)
+//	{
+//		Mdv0 = V_Norm2(dv0, 3);
+//		V_Copy(rv, rv0, 6);
+//		V_Add(&rv[3], &rv[3], dv0, 3);
+//		rv2coe(flag, coeo0, rv);
+//		j2ocoe02ocoef(coeof, coeo0, t);
+//		coe2rv(flag, rv, coeof);
+//		V_Minus(dv1, &rv1[3], &rv[3], 3);
+//		Mdv1 = V_Norm2(dv1, 3);
+//		return;
+//	}
+//	else
+//	{
+//		/*
+//		V_Copy(dv0, dV0, 3);
+//		for(int i=0;i<niter;i++)
+//		{
+//			para[13] = Eps[i];
+//			flag = hybrd1(Fun_J2Lambert, n, dv0, fvec, para, wa, xtol, 0, 200);
+//			if(flag<0||enorm(n,fvec)>=tol)
+//			{
+//				cout<<"无法同伦求解J2Lambert问题"<<endl;
+//				Mdv0 = 10e10;
+//				Mdv1 = 10e10;
+//				return;
+//			}
+//		}
+//		Mdv0 = V_Norm2(dv0,3);
+//		V_Copy(rv, rv0, 6);
+//		V_Add(&rv[3],&rv[3],dv0,3);
+//		//iflag = RK::RKF78(dynRK_j2, rv, intpara, t0, t0+t, 6, RelTol, AbsTol, RKFiflag, RKFWork, 100000, NULL);
+//		iflag = ODE6.Integrate(dynODE_j2, rv, intpara, 0, t, NULL);
+//		if(flag!=1)                     //检查ODE45积分是否成功
+//			cout<<"Integral error"<<endl;
+//
+//		V_Minus(dv1,&rv1[3],&rv[3],3);
+//		Mdv1 = V_Norm2(dv1,3);
+//		*/
+//
+//		Mdv0 = 10e10;
+//		Mdv1 = 10e10;
+//		return;
+//	}
+//}
+//
+//void J2Lambert_Approximation2(int& flag, double* dv0, double* dv1, double& Mdv0, double& Mdv1, int& N, int& branch,
+//	const double* rv0, const double* rv1, double t, double mu)
+//{
+//	const int n = 3, niter = 12;
+//	double Eps[niter] = { 0.0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0 };
+//	double fvec[n] = { 0, 0, 0 }, coeo0[6], coeof[6];
+//	double tol = 10, dV0[3], rv[6];
+//	double para[13], wa[int((n * (3 * n + 13)) / 2)], xtol = 1.0e-8;
+//	int iflag;
+//	//ODE45 ODE6(6);
+//
+//	LambEval2(flag, dv0, dv1, Mdv0, Mdv1, N, branch, rv0, rv1, t, muEarth);
+//	if (flag == 1)
+//		V_Copy(dV0, dv0, 3);
+//	//else
+//	//	cout<<"求解多圈Lambert问题失败(不考虑J2摄动)"<<endl;
+//
+//	V_Copy(para, rv0, 6);
+//	V_Copy(&para[6], rv1, 6);
+//	para[12] = t;
+//	//double intpara[3] = {muEarth, J2, Re};
+//	//double RKFWork[14*6], t0 = 0.0;
+//	//double RelTol = 1.0e-10, AbsTol[6];
+//	//for(int j=0;j<6;j++)
+//	//	AbsTol[j] = 1.0e-10;
+//	//int RKFiflag=1;
+//
+//	flag = hybrd1(Fun_J2Lambert_Approximation, n, dv0, fvec, para, wa, xtol, 0, 200);
+//	if (flag > 0 && enorm(n, fvec) < tol)
+//	{
+//		Mdv0 = V_Norm2(dv0, 3);
+//		V_Copy(rv, rv0, 6);
+//		V_Add(&rv[3], &rv[3], dv0, 3);
+//		rv2coe(flag, coeo0, rv);
+//		j2ocoe02ocoef(coeof, coeo0, t);
+//		coe2rv(flag, rv, coeof);
+//		V_Minus(dv1, &rv1[3], &rv[3], 3);
+//		Mdv1 = V_Norm2(dv1, 3);
+//		return;
+//	}
+//	else
+//	{
+//		/*
+//		V_Copy(dv0, dV0, 3);
+//		for(int i=0;i<niter;i++)
+//		{
+//			para[13] = Eps[i];
+//			flag = hybrd1(Fun_J2Lambert, n, dv0, fvec, para, wa, xtol, 0, 200);
+//			if(flag<0||enorm(n,fvec)>=tol)
+//			{
+//				cout<<"无法同伦求解J2Lambert问题"<<endl;
+//				Mdv0 = 10e10;
+//				Mdv1 = 10e10;
+//				return;
+//			}
+//		}
+//		Mdv0 = V_Norm2(dv0,3);
+//		V_Copy(rv, rv0, 6);
+//		V_Add(&rv[3],&rv[3],dv0,3);
+//		//iflag = RK::RKF78(dynRK_j2, rv, intpara, t0, t0+t, 6, RelTol, AbsTol, RKFiflag, RKFWork, 100000, NULL);
+//		iflag = ODE6.Integrate(dynODE_j2, rv, intpara, 0, t, NULL);
+//		if(flag!=1)                     //检查ODE45积分是否成功
+//			cout<<"Integral error"<<endl;
+//
+//		V_Minus(dv1,&rv1[3],&rv[3],3);
+//		Mdv1 = V_Norm2(dv1,3);
+//		*/
+//
+//		Mdv0 = 10e10;
+//		Mdv1 = 10e10;
+//		return;
+//	}
+//}
+//
+///**************************************************************************************************************************************/
+///*********************************************************考虑j2的Lambert问题精确解****************************************************/
+///**************************************************************************************************************************************/
+//
+//void j2mcoe02mcoef_eJ2(const double* me0, const double dt, const double J2, double* mef)
+//{
+//	double a2 = me0[0] * me0[0];
+//	double a3 = a2 * me0[0];
+//	double e2 = me0[1] * me0[1];
+//	double n = sqrt(muEarth / a3);
+//	double p = me0[0] * (1 - e2);
+//	double p2 = p * p;
+//	double JRPn = J2 * Re * Re / p2 * n;
+//	double ci = cos(me0[2]);
+//	double ci2 = ci * ci;
+//	double dOmega = -1.5 * JRPn * ci;
+//	double domega = 0.75 * JRPn * (5 * ci2 - 1);
+//	double dm = n + 0.75 * JRPn * sqrt(1 - e2) * (3 * ci2 - 1);
+//	mef[0] = me0[0];
+//	mef[1] = me0[1];
+//	mef[2] = me0[2];
+//	mef[3] = me0[3] + dOmega * dt;
+//	mef[4] = me0[4] + domega * dt;
+//	mef[5] = me0[5] + dm * dt;
+//}
+//
+//int Fun_J2Lambert_Approximation(int n, const double* x, double* fvec, int iflag, const double* para)
+//{
+//	double rv[6], coeo0[6], coeof[6], t = para[12];
+//	int flag;
+//	V_Copy(rv, para, 6);
+//	V_Add(&rv[3], &rv[3], x, 3);
+//
+//	rv2coe(flag, coeo0, rv);
+//	j2ocoe02ocoef(coeof, coeo0, t);
+//	coe2rv(flag, rv, coeof);
+//
+//	for (int i = 0; i < n; i++)
+//		fvec[i] = rv[i] - para[i + 6];
+//	return 1;
+//}

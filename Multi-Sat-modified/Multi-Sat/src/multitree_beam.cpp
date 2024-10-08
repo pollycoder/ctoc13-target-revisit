@@ -79,7 +79,7 @@ void MultiTree::beam_discard(std::vector<TNC>& expandinglist)
 	//按照h从大到小排序
 	sort(expandinglist.begin(), expandinglist.end(), MultiTree::SortTNC);
 
-	unique_remove(expandinglist);
+	//unique_remove(expandinglist);
 
 }
 
@@ -99,6 +99,7 @@ void MultiTree::Initialize(std::vector<TNC>& expandinglist)
 		temp_output.m_ = 100000.0;
 		temp_output.rv_acc_;
 		temp_output.action_ = 0;
+		temp_output.time_acc_ = 0.0;
 		double sats_rv0[6]; int flag;
 		coe2rv(flag, sats_rv0, sats_coe0[i], mu_km_s);
 		memcpy(temp_output.rv_acc_, sats_rv0, 6 * sizeof(double));
@@ -506,7 +507,7 @@ void MultiTree::Run()
 
 		beam_discard(expandinglist);                    //排序并取前W_个
 
-		delete_redundant_nodes();                       //删除多余的子节点
+		//delete_redundant_nodes();                       //删除多余的子节点
 
 		RecordBestResult(expandinglist,fout0);			//记录最好信息
 
@@ -559,7 +560,7 @@ void MultiTree::RecordBestResult(std::vector<TNC>& expandinglist, std::ofstream&
 	
 	//按照格式输出最终结果
 	
-	fout1 << std::endl << std::endl << "清理个数：" << result_now_.total_observed_num_ << "当且节点数量" << expandinglist.size() << "当前指标" << result_now_.time_cost_ << "质量" << result_now_.total_mass_ << std::endl;
+	fout1 << std::endl << std::endl << "清理个数：" << result_now_.total_observed_num_ << "当且节点数量" << expandinglist.size() << "当前时间" << result_now_.time_cost_ << std::endl;
 	for (int id_sat = 0; id_sat < TreeNum; id_sat++)
 	{
 		for (int i = 0; i < result_now_.solution_[id_sat].node_info_.size(); i++)
@@ -570,7 +571,7 @@ void MultiTree::RecordBestResult(std::vector<TNC>& expandinglist, std::ofstream&
 				fout1 << std::fixed << std::setprecision(16) << result_now_.solution_[id_sat].node_info_[i].rv_acc_[j] << " ";
 			for (int j = 0; j < 3; j++)
 				fout1 << std::fixed << std::setprecision(16) << result_now_.solution_[id_sat].node_info_[i].dv_[j] << " ";
-			fout1 << std::fixed << std::setprecision(16) << result_now_.solution_[id_sat].node_info_[i].m_ << " " << result_now_.solution_[id_sat].node_info_[i].point_id_ << std::endl;
+			fout1 << std::fixed << std::setprecision(16) << result_now_.solution_[id_sat].node_info_[i].point_id_ << std::endl;
 		}
 	}
 

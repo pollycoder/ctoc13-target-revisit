@@ -101,7 +101,7 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 					as = root[i] * root[i];
 				}
 			}
-			if (as < Re_km || as > Re_km + 1000.0)continue;
+			//if (as < Re_km || as > Re_km + 1000.0)continue;
 
 			//线性J2模型相关
 			C_J2 = 1.5 * J2 * Re_km * Re_km * sqrt(mu_km_s) * pow(as, -3.5);
@@ -134,7 +134,7 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 			M0m = M00 - k3 * (am / a0 - 1.0);
 			//if (em < 0.0 || em > 1.0)continue;
 			if (am * (1.0 - em) < Re_km + 200.0)continue;
-			if (am * (1.0 + em) > Re_km + 1000.0)continue;
+			//if (am * (1.0 + em) > Re_km + 1000.0)continue;
 
 			//平根转化为瞬根，由于平瞬根转换程序中使用的Re为m，在这里也临时改成m来计算
 			mcoe[0] = am * 1000.0;
@@ -357,9 +357,171 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 }
 
 
+void single_imp(const double m0, const double t0, const double* rv0, const double lambda0, const double phi0, const double dt,
+	int& flag0, double& mf, double& tf, double* dv, int& NR, const int branch, const int sign) {
+	double lambda, phi;//目标点的经纬度，转化成弧度
+	double a0, e0, inc0, Omega0, omega0, f00, E00, M00, gamma00, coe0[6], ocoe0[6];//初始轨道根数
+	double c1, c2, k1, k2, k3, A, B, C, D;//中间参数
+	double tG, tG_J2, alphaG0_, alphaGt, alphaGf;//GMST
+	double C_J2, fs, as, am, delta_a, omega_ft, em, omegam, M0m, p0, dv_mod, v0_mod, iv[3];
+	int flag, root_num, NRi, Nmax, Nmin;
+	double dv_min, tmin;
+	double root[3];
+	double omega_J2_, Omega_J2_, M_J2_;//代表相关参数在J2下对时间的一阶导数
+	double mcoe[6], ocoe[6];//最终结果的平瞬根转换
+	double rv0_[6], rvf[6], hf, rtar_F[3], rtar[3];//考虑J2卫星实际位置速度
+
+	flag0 = 0;
+
+	//rv2coe(flag, ocoe0, rv0, mu_km_s);//输入参数转化成轨道根数
+	//ocoe0[0] *= 1000.0;
+	//O2M(ocoe0, coe0, J2);
+	//coe0[0] /= 1000.0;
+	rv2coe(flag, coe0, rv0, mu_km_s);//输入参数转化成轨道根数
+
+	a0 = coe0[0];
+	e0 = coe0[1];
+	inc0 = coe0[2];
+	Omega0 = coe0[3];
+	omega0 = coe0[4];
+	f00 = coe0[5];
+	E00 = f2E(flag, f00, e0);
+	M00 = E2M(flag, E00, e0);
+	gamma00 = atan(e0 * sin(f00) / (1.0 + e0 * cos(f00)));
+
+	//lambda = lambda0 * D2R;//目标点的经纬度，转化成弧度
+	//phi = phi0 * D2R;
+	lambda = lambda0;
+	phi = phi0;
+
+	Nmax = floor(dt / (2.0 * DPI * sqrt(a0 * a0 * a0 / mu_km_s))) + 1;//最多转移圈数
+	Nmin = floor(dt / (2.0 * DPI * sqrt(a0 * a0 * a0 / mu_km_s)));// +1;//最少转移圈数
+
+	k1 = (1.0 - e0 * e0) / (2.0 * e0) / (e0 * cos(f00 - gamma00) + cos(gamma00)) * (sin(f00 - gamma00) + sin(f00) * cos(gamma00) / (1.0 + e0 * cos(f00)));
+	k2 = (1.0 - e0 * e0) / 2.0 * (cos(f00 - gamma00) + cos(E00) * cos(gamma00)) / (e0 * cos(f00 - gamma00) + cos(gamma00));
+	k3 = sqrt((1.0 - e0 * e0) * (1.0 - e0 * e0) * (1.0 - e0 * e0)) / (2.0 * e0) / (e0 * cos(f00 - gamma00) + cos(gamma00)) *
+		(sin(f00 - gamma00) + (2.0 * e0 * sin(gamma00) + sin(f00) * cos(gamma00)) / (1.0 + e0 * cos(f00)));
+
+	alphaG0_ = alpha_G0 + omegaE * t0;//初始时刻GMST
+	while (alphaG0_ > D2PI)alphaG0_ -= D2PI;//注意范围[0, 2PI]
+
+	dv_min = 1.0e10;
+	tmin = 0.0;
+	for (NRi = Nmin; NRi <= Nmax; NRi++)
+	{
+		//for (int bra = 0; bra < 2; bra++)//升交和降交两支
+		int bra = branch;
+		{
+			omega_ft = (bra == 0) ? asin(sin(phi) / sin(inc0)) : -asin(sin(phi) / sin(inc0)) + DPI;//代表omega+ft，是最终轨道的参数，但是轨道面没变
+
+			c1 = -1 / sqrt(1 - sin(phi) * sin(phi)) * (cos(omega_ft) * sin(lambda) - sin(omega_ft) * cos(inc0) * cos(lambda));
+			c2 = -1 / sqrt(1 - sin(phi) * sin(phi)) * (-sin(omega_ft) * cos(inc0) * sin(lambda) - cos(omega_ft) * cos(lambda));
+			alphaGt = Omega0 + atan2(c1, c2);
+			while (alphaGt < alphaG0_)alphaGt += D2PI;
+			while (alphaGt > alphaG0_ + D2PI)alphaGt -= D2PI;
+			tG = ((alphaGt - alphaG0_)) / omegaE;
+
+			fs = (bra == 0) ? asin(sin(phi) / sin(inc0)) - omega0 : -asin(sin(phi) / sin(inc0)) - omega0 + DPI;
+
+			//求解关于(根号as)的三次方程，保留fabs(as-a0)最小的正根
+			A = fs + 2.0 * DPI * double(NRi) - 2.0 * e0 * sin(fs) - 2.0 * k2 * sin(fs) - k1 + k3 + 2.0 * e0 * k1 * cos(fs) - M00;
+			B = 0.0;
+			C = (2.0 * k2 * sin(fs) + k1 - k3 - 2.0 * e0 * k1 * cos(fs)) * a0;
+			D = -tG * sqrt(mu_km_s);
+			root_num = solve_cubic(A, B, C, D, root);
+			as = 0.0;
+			delta_a = 1.0e10;
+			for (int i = 0; i < root_num; i++)
+			{
+				if (root[i] > 0 && delta_a > fabs(root[i] * root[i] - a0))
+				{
+					delta_a = fabs(root[i] * root[i] - a0);
+					as = root[i] * root[i];
+				}
+			}
+			//if (as < Re_km || as > Re_km + 1000.0)continue;
+
+			//线性J2模型相关
+			C_J2 = 1.5 * J2 * Re_km * Re_km * sqrt(mu_km_s) * pow(as, -3.5);
+			omega_J2_ = C_J2 * (2.0 - 2.5 * sin(inc0) * sin(inc0)) / (1.0 - e0 * e0) / (1.0 - e0 * e0);
+			Omega_J2_ = -C_J2 * cos(inc0) / (1.0 - e0 * e0) / (1.0 - e0 * e0);
+			M_J2_ = C_J2 * (1.0 - 1.5 * sin(inc0) * sin(inc0)) / pow((1.0 - e0 * e0), 1.5);
+			tG_J2 = (alphaGt - alphaG0_) / (omegaE - Omega_J2_);
+
+			//线性J2模型下的三次方程求解am，即平半长轴
+			A = A - (M_J2_ + omega_J2_) * tG_J2;
+			B = 0.0;
+			C = (2.0 * k2 * sin(fs) + k1 - k3 - 2.0 * e0 * k1 * cos(fs)) * a0;
+			D = -tG_J2 * sqrt(mu_km_s);
+			root_num = solve_cubic(A, B, C, D, root);
+			am = 0.0;
+			delta_a = 1.0e10;
+			for (int i = 0; i < root_num; i++)
+			{
+				if (root[i] > 0 && delta_a > fabs(root[i] * root[i] - a0))
+				{
+					delta_a = fabs(root[i] * root[i] - a0);
+					am = root[i] * root[i];
+				}
+			}
+			//if (am < Re_km + 200.0)continue;
+
+			//此时am已求出，且i,Omega不变，需计算其他平轨道根数（近似解）
+			em = e0 + k2 * (am / a0 - 1.0);
+			omegam = omega0 + k1 * (am / a0 - 1.0);
+			M0m = M00 - k3 * (am / a0 - 1.0);
+			//if (em < 0.0 || em > 1.0)continue;
+			//if (am * (1.0 - em) < Re_km + 200.0)continue;
+			//if (am * (1.0 + em) > Re_km + 1000.0)continue;
+
+			//平根转化为瞬根，由于平瞬根转换程序中使用的Re为m，在这里也临时改成m来计算
+			mcoe[0] = am * 1000.0;
+			mcoe[1] = em;
+			mcoe[2] = inc0;
+			mcoe[3] = Omega0;
+			mcoe[4] = omegam;
+			mcoe[5] = E2f(flag, M2E(flag, M0m, em, 100, 1.0e-14), em);
+			M2O(mcoe, ocoe, J2);
+
+			//计算初始时刻的切向脉冲
+			p0 = a0 * (1 - e0 * e0);
+			dv_mod = sqrt(mu_km_s * (2.0 * (1.0 + e0 * cos(f00)) / p0 - 1.0 / (ocoe[0] / 1000.0))) - sqrt(mu_km_s / p0 * (1.0 + e0 * e0 + 2.0 * e0 * cos(f00)));
+
+			if ((double)sign * dv_mod < 0.0)continue;//新增脉冲方向的选择
+
+			if (fabs(dv_min) > fabs(dv_mod))
+			//if(fabs(tG_J2 - dt < 0.7 * 3600.0))
+			{
+				dv_min = dv_mod;
+
+				//C_J2 = 1.5 * J2 * Re_km * Re_km * sqrt(mu_km_s) * pow(am, -3.5);
+				//Omega_J2_ = -C_J2 * cos(inc0) / (1.0 - em * em) / (1.0 - em * em);
+				//tG_J2 = (alphaGt - alphaG0_ + 2.0 * DPI * (double(Day) - 1.0)) / (omegaE - Omega_J2_);//精确的J2飞行时间
+				tmin = tG_J2;
+				NR = NRi;
+				flag0 = 1;
+				//branch = bra;
+			}
+		}
+	}
+
+	v0_mod = sqrt(rv0[3] * rv0[3] + rv0[4] * rv0[4] + rv0[5] * rv0[5]);
+	for (int i = 0; i < 3; i++)iv[i] = rv0[i + 3] / v0_mod;
+	for (int i = 0; i < 3; i++)dv[i] = dv_min * iv[i];
+
+	tf = tmin;
+	//mf = m0 * exp(-fabs(dv_min * 1000.0) / g0 / Isp);
+
+	/*if (mf < 300.0)
+		flag0 = 0;
+	else*/
+}
+
+
 double obj_func(const std::vector<double>& X, std::vector<double>& grad, void* f_data) {	
 	// Parameters
 	double* para = static_cast<double*> (f_data);
+	const double time_stamp = para[10];
 	
 	// Initialize the variables
 	double dv[3] = { 0.0, 0.0, 0.0 };
@@ -382,14 +544,8 @@ void get_score_data(const std::vector<double>& X, const double* para, double* dv
 	const double time_stamp = para[10];
 	const double dv0[3] = { para[11], para[12], para[13] };
 
-	// Perturbation
-	dv[0] = dv0[0] + (X[0] - 0.5) * 1e3;
-	dv[1] = dv0[1] + (X[1] - 0.5) * 1e3;
-	dv[2] = dv0[2] + (X[2] - 0.5) * 1e3;
-	tf += (X[3] - 0.5) * hour * 1e3;															// Time: ±0.5h
-
-	// Observing time: if the time is too far away from the time stamp, return penalty
-	if (fabs(time_stamp - tf) > 1.0 * hour) {
+	if(tf < 0) {
+		//std::cout << "tf = " << tf << std::endl;
 		for (int j = 0; j < 3; j++) {
 			dv[j] = penalty;
 			rvf[j] = penalty; rvf[j + 3] = penalty;
@@ -397,6 +553,22 @@ void get_score_data(const std::vector<double>& X, const double* para, double* dv
 		}
 		return;
 	}
+
+	// Perturbation
+	dv[0] = dv0[0] + (X[0] - 0.5) * 1e3;
+	dv[1] = dv0[1] + (X[1] - 0.5) * 1e3;
+	dv[2] = dv0[2] + (X[2] - 0.5) * 1e3;
+	tf += (X[3] - 0.5) * 2 * hour;															// Time: ±0.5h
+
+	// Observing time: if the time is too far away from the time stamp, return penalty
+	/*if (fabs(time_stamp - tf) > 0.7 * hour) {
+		for (int j = 0; j < 3; j++) {
+			dv[j] = penalty;
+			rvf[j] = penalty; rvf[j + 3] = penalty;
+			tf = penalty;
+		}
+		return;
+	}*/
 
 	// Add impulse and propagate
 	double v0[3] = { rv0[3], rv0[4], rv0[5] };
@@ -439,8 +611,9 @@ void shooting_target2target(const double t0, const double* rv0, const double tim
 	// tf: final time, not flight time, therefore t0 should be added after single_impulse provides an initial value
 	double impulse_temp = 1.0e6;
 	double impulse = 1.0e6;
+	double dt = time_stamp - t0;
 	for (int dv_sign = -1; dv_sign < 2; dv_sign += 2) {
-		single_imp(m0, t0, rv0, lambda0, phi0, 1, flag, mf, tf, dv, NR, branch, dv_sign);
+		single_imp(m0, t0, rv0, lambda0, phi0, dt, flag, mf, tf, dv, NR, branch, dv_sign);
 		if (flag == 0) {
 			tf = penalty;
 			for (int i = 0; i < 3; i++) {
@@ -458,7 +631,89 @@ void shooting_target2target(const double t0, const double* rv0, const double tim
 		if (impulse_temp < impulse) {
 			get_score_data(X, f_data, dv, rvf, tf);
 			impulse = impulse_temp;
+			/*std::cout << "tf = " << tf << std::endl;
+			std::cout << "dv = " << dv[0] << " " << dv[1] << " " << dv[2] << std::endl;
+			std::cout << "NR = " << NR << std::endl;*/
 			return;
 		}
+	}
+}
+
+void optpara_2_real_mission(const std::vector<double>& X, const int sat_num, std::vector<std::vector<double>>& coe_chief)
+{
+	// Assign the orbit elements of two chief satellites
+	for (int i = 0; i < sat_num; i++) {
+		double a = a0_min + X[i * 6] * (a_max - a0_min);
+		double e = e_scale * X[i * 6 + 1];
+		double inc = i_min + X[i * 6 + 2] * (i_max - i_min);
+		double Omega = X[i * 6 + 3] * D2PI;
+		double omega = X[i * 6 + 4] * D2PI;
+		double f = X[i * 6 + 5] * D2PI;
+		std::vector<double> coe0 = { a, e, inc, Omega, omega, f };
+		coe_chief.push_back(coe0);
+	}
+}
+
+
+double obj_func_initial_coe(const std::vector<double>& X, std::vector<double>& grad, void* f_data) {
+	double* para = static_cast<double*>(f_data);
+	double coe0[6];
+	double average_err;
+	get_initial_coe(X, coe0, average_err);
+	return average_err;
+}
+
+
+void get_initial_coe(const std::vector<double>& X, double* coe0, double& average_err) {
+	std::vector<std::vector<double>> visit_list;
+	double t0, tf;
+	int target_id, flag;
+	std::vector<std::vector<double>> coe_chief;
+
+	average_err = 0.0;
+
+	optpara_2_real_mission(X, 1, coe_chief);
+
+	const double coe0_arr[6] = {
+		coe_chief[0][0], coe_chief[0][1], coe_chief[0][2],
+		coe_chief[0][3], coe_chief[0][4], coe_chief[0][5]
+	};
+	memcpy(coe0, coe0_arr, 6 * sizeof(double));
+	double rv0[6], rvf[6], target_J2000[3];
+	coe2rv(flag, rv0, coe0_arr, mu_km_s);
+
+	for (int i = 0; i < GapNum; i++) {
+		if (i == 0) t0 = 0.0;
+		else t0 = visit_gap[i - 1][1];
+		tf = visit_gap[i][1];
+		target_id = static_cast<int>(visit_gap[i][0]);
+		get_target_R(target_id, tf, target_J2000);
+		propagate_j2(rv0, rvf, t0, tf);
+
+		/*double rf[3] = { rvf[0], rvf[1], rvf[2] };
+		double rf_norm = V_Norm2(rf, 3);
+		V_Multi(rf, rf, Re_km / rf_norm, 3);
+		double r_rel[3];
+		V_Minus(r_rel, rf, target_J2000, 3);
+		double dist = V_Norm2(r_rel, 3);
+		dist /= (Re_km * D2R);
+
+		average_err += dist;*/
+		//std::cout << "Dist = " << dist << std::endl;
+
+		bool ifvisible = is_target_visible(rvf, target_J2000, 19.5 * D2R);
+		if (ifvisible) average_err -= 1000.0;
+		else {
+			double rf[3] = { rvf[0], rvf[1], rvf[2] };
+			double rf_norm = V_Norm2(rf, 3);
+			V_Multi(rf, rf, Re_km / rf_norm, 3);
+			double r_rel[3];
+			V_Minus(r_rel, rf, target_J2000, 3);
+			double dist = V_Norm2(r_rel, 3);
+			dist /= (Re_km * D2R);
+			average_err += dist;
+		}
+
+		memcpy(rv0, rvf, 6 * sizeof(double));
 	}
 }

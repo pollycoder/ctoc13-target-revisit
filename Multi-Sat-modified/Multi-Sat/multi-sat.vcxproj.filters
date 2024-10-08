@@ -147,6 +147,12 @@
     <ClCompile Include="src\multitree_beam.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="src\Lambert.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\J2Lambert.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\MinPack\cminpack.h">
@@ -210,6 +216,12 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="include\multitree_beam.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Lambert.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\J2Lambert.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
