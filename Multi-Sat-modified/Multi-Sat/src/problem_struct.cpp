@@ -6,9 +6,7 @@ void OutputResult::operator =(const OutputResult& OutputResult_result)
 	time_acc_ = OutputResult_result.time_acc_;
 	memcpy(rv_acc_, OutputResult_result.rv_acc_, 6 * sizeof(double));
 	memcpy(dv_, OutputResult_result.dv_, 3 * sizeof(double));
-	m_ = OutputResult_result.m_;
 	point_id_ = OutputResult_result.point_id_;
-	branch_ = OutputResult_result.branch_;
 }
 
 void Node_problem::operator=(const Node_problem& result)
@@ -31,7 +29,7 @@ void Solution_one::operator=(const Solution_one& a)
 
 void Solution::operator=(const Solution& a)
 {
-	total_mass_ = a.total_mass_;
+	total_impulse_ = a.total_impulse_;
 	total_observed_num_ = a.total_observed_num_;
 	for (int i = 0; i < TreeNum; i++)
 	{

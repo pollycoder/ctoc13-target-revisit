@@ -19,8 +19,8 @@
 const std::string space = " ";
  
 int main() {
-	MultiTree multi_tree(100, 3, 10, 1000.0);
-	multi_tree.Run();
+	/*MultiTree multi_tree(100, 3, 10, 1000.0);
+	multi_tree.Run();*/
 
 	/*std::vector<double> X = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 	double f = 1000.0;

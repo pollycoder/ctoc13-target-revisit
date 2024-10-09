@@ -16,8 +16,11 @@ int solve_lambert(const double* R1, const double* R2, const double& tof, double*
 
 // Lambert solver for problems with J2 perturbation in less than 2 days
 // Use two-body Lambert solver to get initial value, then shoot to the precise result
-void J2Lambert_short(double* v1vec, double* v2vec, double& a, double& e, const double* R1, const double* R2, const double& TOF,
+// Input: RV0, TOF, RVf[0-2], mu
+// Output: RV1, RVf[3-5]
+void J2Lambert_short(int& flag, double* v1vec, double* v2vec, double& a, double& e, const double* R1, const double* R2, const double& TOF,
    const double& mu, int way, int N, int branch, int Maxiter, double tol);
+void J2Lambert_short(double* RV1, double* RVf, const double* RV0, const double& TOF, const double& mu);
 
 // Test J2 Lambert
 void test_lambert();

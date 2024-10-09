@@ -28,16 +28,14 @@ public:
 	double time_acc_;   //可见时刻
 	double rv_acc_[6];  //可见时刻位置速度
 	double dv_[3];		//速度增量
-	double m_;			//卫星质量，若施加了速度增量，则填施加速度增量后的质量
-	int point_id_;		//若action_=0或1，则0占位，若动作标志位为2，则为观测对应的目标编号1~21
-	int branch_;        //0为升交，1为降交
+	int point_id_;		//若action_=0或1，则0占位，若动作标志位为2，则为观测对应的目标编号1~20（CTOC13对应0~25的gap编号）
+	
 	OutputResult()
 	{
 		action_ = 0;
 		time_acc_ = 0.0;
 		for (int i = 0; i < 3; i++)	dv_[i] = 0.0;
 		point_id_ = 0;
-		branch_ = 1;
 	}
 	OutputResult(int _id)
 	{
@@ -45,28 +43,23 @@ public:
 		time_acc_ = 0;
 		for (int i = 0; i < 3; i++)	dv_[i] = 0.0;
 		point_id_ = _id;
-		branch_ = 1;
 	}
 
-	OutputResult(int _id, double time, double* rv, double m, int branch)
+	OutputResult(int _id, double time, double* rv)
 	{
 		action_ = 2;
 		time_acc_ = time;
 		for (int i = 0; i < 3; i++)	dv_[i] = 0.0;
 		for (int i = 0; i < 6; i++) rv_acc_[i] = rv[i];
-		point_id_ = _id;
-		m_ = m;
-		branch_ = branch;
+		point_id_ = _id; 
 	}
-	OutputResult(double time, double* RV, double* dv, double m, int branch)
+	OutputResult(double time, double* RV, double* dv)
 	{
 		action_ = 1;
 		time_acc_ = time;
 		memcpy(rv_acc_, RV, 6 * sizeof(double));
 		memcpy(dv_, dv, 3 * sizeof(double));
-		m_ = m;
 		point_id_ = 0;
-		branch_ = branch;
 	}
 	void operator =(const OutputResult& OutputResult_result);    //等号重载
 };
@@ -98,18 +91,18 @@ struct Optimization_index
 public:
 	//TODO;确定最终指标：时间，燃料消耗，观测质量
 	int observed_num_;  //空间碎片清理个数（CTOC13对应已填补的gap个数）
-	double total_mass_;   //总速度增量
+	double total_impulse_;   //总速度增量
 	double time_cost;   //总观测时间
 	double height_aver; //总观测时间
 
 	Optimization_index()
 	{
 		observed_num_ = 0;
-		total_mass_ = 0.0;
+		total_impulse_ = 0.0;
 		height_aver = 0.0;
 		time_cost = 0.0;
 	}
-	Optimization_index(Optimization_index & a): observed_num_(a.observed_num_),total_mass_(a.total_mass_), time_cost(a.time_cost),
+	Optimization_index(Optimization_index & a): observed_num_(a.observed_num_),total_impulse_(a.total_impulse_), time_cost(a.time_cost),
 		height_aver(a.height_aver){}
 };
 
@@ -133,14 +126,14 @@ class Solution
 {
 public:
 	Solution_one  solution_[TreeNum];      //所有的卫星的结果
-	double total_mass_;                    //总的速度增量
+	double total_impulse_;                    //总的速度增量
 	int total_observed_num_;               //总观测个数
 	double time_cost_;                      //总观测时间
 	double height_aver_;                    //总观测时间
 	
-	Solution():total_mass_(0.0), total_observed_num_(0), time_cost_(0), height_aver_(0){}
+	Solution():total_impulse_(0.0), total_observed_num_(0), time_cost_(0), height_aver_(0){}
 	
-	Solution(const Solution& a) : total_mass_(a.total_mass_), total_observed_num_(a.total_observed_num_), time_cost_(a.time_cost_),
+	Solution(const Solution& a) : total_impulse_(a.total_impulse_), total_observed_num_(a.total_observed_num_), time_cost_(a.time_cost_),
 	height_aver_(a.height_aver_)
 	{
 		for (int i = 0; i< TreeNum; i++)
