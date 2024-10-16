@@ -310,56 +310,59 @@ std::vector<Node*> Tree::ExpandNode(Node* node, const int* visited, const std::v
 inline  void children_nodes(Node* node, const int* visited, std::vector<Node_problem>& child_node_problems)
 {
 	for (int j = 0; j < GapNum; j++)
-	{						
+	{
 		if (visited[j] > 0)
 		{
 			continue;
 		}
-		double t0, rv0[6], lambda0, phi0, tf, dv[3];
+		for (int branch = 0; branch < 1; branch++)
+		{
+			double t0, rv0[6], lambda0, phi0, tf, dv[3];
 
-		memcpy(rv0, node->problem_.node_info_.back().rv_acc_, 6 * sizeof(double));
-		t0 = node->problem_.node_info_.back().time_acc_;
-		tf = visit_gap[j][0];
+			memcpy(rv0, node->problem_.node_info_.back().rv_acc_, 6 * sizeof(double));
+			t0 = node->problem_.node_info_.back().time_acc_;
+			tf = visit_gap[j][1];
 
-		// 经纬度重新指定：适配visit_gap
-		double next_target_geodetic[2];
-		int id = static_cast<int>(visit_gap[j][0]);
-		get_target_geogetic(id, visit_gap[j][1], next_target_geodetic);
-		lambda0 = next_target_geodetic[1];
-		phi0 = next_target_geodetic[0];
+			// 经纬度重新指定：适配visit_gap
+			double next_target_geodetic[2];
+			int id = static_cast<int>(visit_gap[j][0]);
+			get_target_geogetic(id, visit_gap[j][1], next_target_geodetic);
+			lambda0 = next_target_geodetic[1];
+			phi0 = next_target_geodetic[0];
 
-		double norm_r = V_Norm2(rv0, 3);      //轨道高度约束
-		if (norm_r - Re_km < 200.0) continue;
+			double norm_r = V_Norm2(rv0, 3);      //轨道高度约束
+			if (norm_r - Re_km < 200.0) continue;
 
-		double rvf[6];
+			double rvf[6];
 
-		// 打靶到下一个目标，适配visit_gap
-		//shooting_target2target(t0, rv0, visit_gap[j][1], lambda0, phi0, tf, dv, rvf, branch);
-		double r1[3]{ rv0[0], rv0[1], rv0[2] };
-		double r2[3];
+			// 打靶到下一个目标，适配visit_gap
+			//shooting_target2target(t0, rv0, visit_gap[j][1], lambda0, phi0, tf, dv, rvf, branch);
+			double h; int flag;
+			single_imp(dv, rvf, flag, h, rv0, t0, tf, lambda0, phi0);
 
 
-		//TODO: 将结果输出
-		Node_problem temp;
-		OutputResult temp_out, temp_out2; //机动的信息，机动后的信息
+			//TODO: 将结果输出
+			Node_problem temp;
+			OutputResult temp_out, temp_out2; //机动的信息，机动后的信息
 
-		temp_out.action_ = 1;
-		for (int i = 0; i < 3; i++)  rv0[3 + i] += dv[i];
-		memcpy(temp_out.rv_acc_, rv0, 6 * sizeof(double));
-		memcpy(temp_out.dv_, dv, 3 * sizeof(double));
-		temp_out.time_acc_ = t0;
-		temp_out.point_id_ = 0;
+			temp_out.action_ = 1;
+			for (int i = 0; i < 3; i++)  rv0[3 + i] += dv[i];
+			memcpy(temp_out.rv_acc_, rv0, 6 * sizeof(double));
+			memcpy(temp_out.dv_, dv, 3 * sizeof(double));
+			temp_out.time_acc_ = t0;
+			temp_out.point_id_ = 0;
 
-		temp_out2.action_ = 2;
-		temp_out2.time_acc_ = tf;
-		memcpy(temp_out2.rv_acc_, rvf, 6 * sizeof(double));
-		for (int i = 0; i < 3; i++) temp_out2.dv_[i] = 0.0;
-		temp_out2.point_id_ = j;
+			temp_out2.action_ = 2;
+			temp_out2.time_acc_ = tf;
+			memcpy(temp_out2.rv_acc_, rvf, 6 * sizeof(double));
+			for (int i = 0; i < 3; i++) temp_out2.dv_[i] = 0.0;
+			temp_out2.point_id_ = j;
 
-		temp.node_info_.push_back(temp_out);
-		temp.node_info_.push_back(temp_out2);
+			temp.node_info_.push_back(temp_out);
+			temp.node_info_.push_back(temp_out2);
 
-		child_node_problems.push_back(temp);
+			child_node_problems.push_back(temp);
+		}
 	}
 }
 

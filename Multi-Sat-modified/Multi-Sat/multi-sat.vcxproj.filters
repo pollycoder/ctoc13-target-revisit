@@ -120,9 +120,6 @@
     <ClCompile Include="include\orbit_base\Integrator.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="include\orbit_base\Lambert.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="include\orbit_base\RungeKutta.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
@@ -147,10 +144,10 @@
     <ClCompile Include="src\multitree_beam.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="src\Lambert.cpp">
+    <ClCompile Include="src\J2Lambert.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="src\J2Lambert.cpp">
+    <ClCompile Include="src\Lambert.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

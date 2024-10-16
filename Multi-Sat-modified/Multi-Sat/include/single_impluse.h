@@ -10,6 +10,7 @@
 #include"OrbitMath.h"
 #include"visibility_4_targets.h"
 #include"PSO_DE_NLOPT.h"
+#include "J2Lambert.h"
 
 /****************************************************************************
 * Copyright (C), 2020-2031 清华大学航天航空学院动力学与控制实验室
@@ -138,6 +139,20 @@ void optpara_2_real_mission(const std::vector<double>& X, const int sat_num, std
 double obj_func_initial_coe(const std::vector<double>& X, std::vector<double>& grad, void* f_data);
 void get_initial_coe(const std::vector<double>& X, double* coe0, double& average_err);
 
+
+//CTOC13：利用J2Lambert问题，进行单次脉冲修正
+//与张刚论文作用类似，但是脉冲并不是近似切向，在一个轨道高度范围内近似选择脉冲最低且能观测到地面目标的
+//输入：
+//		RV0[6]：初始位置速度
+//		t0：初始时刻
+//		tf：终端时刻
+//输出：
+//		dv[3]：最终的脉冲
+//		RVf[6]：终端位置速度
+//		flag：求解成功返回1，求解失败返回0    
+//		h：最终采用的高度                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
+void single_imp(double* dv, double* RVf, int& flag, double& h, const double* RV0, const double& t0, const double& tf, const double& lambda0, const double& phi0);
+void test_single_impulse();
 
 
 

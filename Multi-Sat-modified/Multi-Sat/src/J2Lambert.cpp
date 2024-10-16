@@ -43,14 +43,14 @@ int solve_lambert(const double* R1, const double* R2, const double& tof, double*
 
 void J2Lambert_short(int& flag, double* v1vec, double* v2vec, double& a, double& e, const double* R1, const double* R2, const double& TOF,
     const double& mu, int way=0, int N=0, int branch=0, int Maxiter=60, double tol=1e-11) {
-    flag = lambert(v1vec, v2vec, a, e, R1, R2, TOF, mu, way, N, branch);
+    flag = lambert(v1vec, v2vec, a, e, R1, R2, TOF, mu, way, N, branch, Maxiter, tol);
     //if (flag != 1) std::cout << "Two-body Lambert failed." << std::endl;
     flag = solve_lambert(R1, R2, TOF, v1vec, v2vec);
     //if (flag == 0) std::cout << "J2 Lambert failed." << std::endl;
 }
 
-void J2Lambert_short(double* RV1, double* RVf, const double* RV0, const double& TOF, const double& mu) {
-    int flag = 0;
+void J2Lambert_short(int&flag, double* RV1, double* RVf, const double* RV0, const double& TOF, const double& mu) {
+    flag = 0;
     int flag_temp = 0;
     double R0[3] = { RV0[0], RV0[1], RV0[2] };
     double Rf[3] = { RVf[0], RVf[1], RVf[2] };
@@ -65,6 +65,7 @@ void J2Lambert_short(double* RV1, double* RVf, const double* RV0, const double& 
     int Nmin = TOF / T - 1;
     int Nmax = TOF / T + 1;
 
+    int way_opt, branch_opt;
     for (int N = Nmin; N <= Nmax; N++) {
         if (N < 0) continue;
         for (int way = 0; way < 2; way++) {
@@ -84,12 +85,15 @@ void J2Lambert_short(double* RV1, double* RVf, const double* RV0, const double& 
                         RV1[i + 3] = v1temp[i];
                     }
                     flag = flag_temp;
+                    way_opt = way;
+                    branch_opt = branch;
                 }
             }
         }
     }
 
     if (flag != 1) std::cout << "J2 Lambert failed." << std::endl;
+    //else std::cout << "way = " << way_opt << " " << "branch = " << branch_opt << std::endl;*/
 }
 
 void test_lambert() {
@@ -108,7 +112,7 @@ void test_lambert() {
     std::cout << "v1 = " << v1[0] << " " << v1[1] << " " << v1[2] << std::endl;
     std::cout << "v2 = " << v2[0] << " " << v2[1] << " " << v2[2] << std::endl;
 
-    J2Lambert_short(rv1, rvf, rv0, 200000.0, mu_km_s);
+    J2Lambert_short(flag, rv1, rvf, rv0, 200000.0, mu_km_s);
     std::cout << "rv0 = " << rv0[0] << " " << rv0[1] << " " << rv0[2] << " " << rv0[3] << " " << rv0[4] << " " << rv0[5] << std::endl;
     std::cout << "rv1 = " << rv1[0] << " " << rv1[1] << " " << rv1[2] << " " << rv1[3] << " " << rv1[4] << " " << rv1[5] << std::endl;
     std::cout << "dv = " << rv1[3] - rv0[3] << " " << rv1[4] - rv0[4] << " " << rv1[5] - rv0[5] << std::endl;

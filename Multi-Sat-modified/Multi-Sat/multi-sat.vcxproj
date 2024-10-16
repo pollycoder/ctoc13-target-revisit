@@ -92,6 +92,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <OpenMPSupport>true</OpenMPSupport>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -108,6 +109,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <OpenMPSupport>true</OpenMPSupport>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -154,7 +156,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\J2Lambert.cpp" />
-    <ClCompile Include="src\Lambert.cpp" />
     <ClCompile Include="include\MinPack\chkder.c" />
     <ClCompile Include="include\MinPack\covar.c" />
     <ClCompile Include="include\MinPack\covar1.c" />
@@ -184,12 +185,12 @@
     <ClCompile Include="include\optimization\PSO_DE_NLOPT.cpp" />
     <ClCompile Include="include\optimization\random_threads.cpp" />
     <ClCompile Include="include\orbit_base\Integrator.cpp" />
-    <ClCompile Include="include\orbit_base\Lambert.cpp" />
     <ClCompile Include="include\orbit_base\OrbitFun.cpp" />
     <ClCompile Include="include\orbit_base\OrbitMath.cpp" />
     <ClCompile Include="include\orbit_base\RungeKutta.cpp" />
     <ClCompile Include="src\cubic.cpp" />
     <ClCompile Include="src\J2propagation.cpp" />
+    <ClCompile Include="src\Lambert.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\Mat3D.cpp" />
     <ClCompile Include="src\max_reseetime.cpp" />

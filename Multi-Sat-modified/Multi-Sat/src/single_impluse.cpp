@@ -717,3 +717,82 @@ void get_initial_coe(const std::vector<double>& X, double* coe0, double& average
 		memcpy(rv0, rvf, 6 * sizeof(double));
 	}
 }
+
+
+//CTOC13：利用J2Lambert问题，进行单次脉冲修正
+//与张刚论文作用类似，但是脉冲并不是近似切向，在一个轨道高度范围内近似选择脉冲最低且能观测到地面目标的
+//输入：
+//		RV0[6]：初始位置速度
+//		t0：初始时刻
+//		tf：终端时刻
+//输出：
+//		dv[3]：最终的脉冲
+//		RVf[6]：终端位置速度
+//		flag：求解成功返回1，求解失败返回0    
+//		h：最终采用的高度   
+void single_imp(double* dv, double* RVf, int& flag, double& h, const double* RV0, const double& t0, const double& tf, const double& lambda0, const double& phi0) {
+	double R0[3] = { RV0[0], RV0[1], RV0[2] };
+	double V0[3] = { RV0[3], RV0[4], RV0[5] };
+	double geogetic_Target[2] = { phi0, lambda0 };
+	double R_Target[3];
+	Geodetic2J2000(geogetic_Target, R_Target, tf);
+
+	double hmin = V_Norm2(R0, 3) - Re_km - 20.0;
+	double hmax = V_Norm2(R0, 3) - Re_km + 20.0;
+	h = 0.0;
+	int flag_temp; flag = 0;
+	
+	double dv_norm = 1.0e10;
+	double dv_temp = 1.0e10;
+	double v1temp[3], dvtemp[3], RVf_temp[6], RV1_temp[6];
+	for (double h_temp = hmin; h_temp <= hmax; h_temp += 5.0) {
+		double R = Re_km + h_temp;
+		double Rf_temp[3];
+		V_Multi(Rf_temp, R_Target, R / Re_km, 3);
+		for (int i = 0; i < 3; i++) RVf_temp[i] = Rf_temp[i];
+		J2Lambert_short(flag_temp, RV1_temp, RVf_temp, RV0, tf - t0, mu_km_s);
+
+		bool ifvisible = is_target_visible(RVf_temp, R_Target, 20.0 * D2R);
+		if (!ifvisible) flag_temp = 0;
+
+		//如果不成功则惩罚
+		if (flag_temp != 1) {
+			h = penalty;
+			for (int j = 0; j < 3; j++) {
+				RVf[j] = penalty;
+				RVf[j + 3] = penalty;
+				dv[j] = penalty;
+			}
+			continue;
+		}
+
+		//如果成功则计算脉冲
+		for (int i = 0; i < 3; i++) v1temp[i] = RV1_temp[i + 3];
+		V_Minus(dvtemp, v1temp, V0, 3);
+		dv_temp = V_Norm2(dvtemp, 3);
+		if (dv_temp < dv_norm) {
+			memcpy(RVf, RVf_temp, 6 * sizeof(double));
+			memcpy(dv, dvtemp, 3 * sizeof(double));
+			h = h_temp;
+			flag = flag_temp;
+			dv_norm = dv_temp;
+		}
+	}
+}
+
+void test_single_impulse() {
+	double tf = 27000.0;
+	double geogetic[2];
+	get_target_geogetic(20, tf, geogetic);
+	double phi0 = geogetic[0];
+	double lambda0 = geogetic[1];
+	double coe0[6] = { 7266.3447300297, 0.00299999999949812, 1.9313492453818, 0.920149515576379, 5.32827748628819, 6.23776341036902 };
+	double RV0[6], dv[3], RVf[6], h;
+	int flag;
+	coe2rv(flag, RV0, coe0, mu_km_s);
+
+	single_imp(dv, RVf, flag, h, RV0, 0.0, tf, lambda0, phi0);
+
+	std::cout << "flag = " << flag << std::endl;
+	std::cout << "dv = " << dv[0] << " " << dv[1] << " " << dv[2] << std::endl;
+}

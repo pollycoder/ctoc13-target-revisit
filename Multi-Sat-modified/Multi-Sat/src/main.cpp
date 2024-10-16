@@ -10,6 +10,7 @@
 * 01       2021-05-12    张众      创建文件
 * 02	   2024-09-28	 周懿	   测试观测打靶函数
 * 03	   2024-09-30	 周		   测试树搜索
+* 04	   2024-10-15	 周		   开始初值探索
 ****************************************************************************/
 #include <stdlib.h>
 #include "multitree_beam.h"
@@ -19,19 +20,11 @@
 const std::string space = " ";
  
 int main() {
-	/*MultiTree multi_tree(100, 3, 10, 1000.0);
-	multi_tree.Run();*/
+	MultiTree multi_tree(100, 4, 10, 300.0);
+	multi_tree.Run();
 
-	/*std::vector<double> X = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-	double f = 1000.0;
-	DE_parallel(obj_func_initial_coe, nullptr, X, f, 6, 1000, 10000, 100);
-
-	double coe0[6];
-	get_initial_coe(X, coe0, f);
-	std::cout << coe0[0] << space << coe0[1] << space << coe0[2] << space << coe0[3] << space << coe0[4] << space << coe0[5] << std::endl;*/
-
-	test_lambert();
-
+	//test_lambert();
+	//test_single_impulse();
 
 	return 0;
 }

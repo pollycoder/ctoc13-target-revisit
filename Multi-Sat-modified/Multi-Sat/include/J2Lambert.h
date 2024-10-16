@@ -20,7 +20,9 @@ int solve_lambert(const double* R1, const double* R2, const double& tof, double*
 // Output: RV1, RVf[3-5]
 void J2Lambert_short(int& flag, double* v1vec, double* v2vec, double& a, double& e, const double* R1, const double* R2, const double& TOF,
    const double& mu, int way, int N, int branch, int Maxiter, double tol);
-void J2Lambert_short(double* RV1, double* RVf, const double* RV0, const double& TOF, const double& mu);
+void J2Lambert_short(int&flag, double* RV1, double* RVf, const double* RV0, const double& TOF, const double& mu);
+
+
 
 // Test J2 Lambert
 void test_lambert();
