@@ -141,6 +141,7 @@ void get_initial_coe(const std::vector<double>& X, double* coe0, double& average
 
 
 //CTOC13：利用J2Lambert问题，进行单次脉冲修正
+//TODO：需要改成输入轨道高度的情况，以便Lambert优化器优化高度和实际覆盖的目标点
 //与张刚论文作用类似，但是脉冲并不是近似切向，在一个轨道高度范围内近似选择脉冲最低且能观测到地面目标的
 //输入：
 //		RV0[6]：初始位置速度
@@ -151,9 +152,28 @@ void get_initial_coe(const std::vector<double>& X, double* coe0, double& average
 //		RVf[6]：终端位置速度
 //		flag：求解成功返回1，求解失败返回0    
 //		h：最终采用的高度                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
-void single_imp(double* dv, double* RVf, int& flag, double& h, const double* RV0, const double& t0, const double& tf, const double& lambda0, const double& phi0);
-void test_single_impulse();
+void single_imp(double* dv, double* RVf, int& flag, const double* RV0, const double& t0, const double& tf, const double& lambda0, const double& phi0, const double& h);
 
 
+//CTOC13：利用J2Lambert，优化覆盖目标点的轨道高度
+//优化变量（被摄动项）：
+//		h：轨道高度
+//		(lambda, phi)：实际经过的地面经纬度，先扰动时间，再进一步扰动经纬度
+//		tf：实际的终末时刻
+//优化指标：
+//		dv：脉冲大小
+//参数：
+//		t0：初始时刻
+//		RV0[6]：初始位置速度
+//		tf：优化前的终末时刻
+//		h0：优化前的轨道高度
+//		target_id：要观测的目标序号（0-20）
+//约束：
+//		保证目标可见
+//		轨道高度200-1000km
+//格式与PSO对应的Obj_func完全一致，我们只需要获取最终的优化变量X
+//不同于之前每次都要先写get_value再包装，这是为了childnode函数看起来思路更清晰
+double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad, void* f_data);
+void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& t0, const double* RV0, const double& h0, const int& target_id);
 
 #endif // !SINGLE_IMPLUSE_H

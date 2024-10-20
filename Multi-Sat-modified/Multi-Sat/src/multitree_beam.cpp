@@ -309,60 +309,76 @@ std::vector<Node*> Tree::ExpandNode(Node* node, const int* visited, const std::v
 ****************************************************************************/
 inline  void children_nodes(Node* node, const int* visited, std::vector<Node_problem>& child_node_problems)
 {
-	for (int j = 0; j < GapNum; j++)
+	for (int j = 0; j < TargetNum; j++)
 	{
 		if (visited[j] > 0)
 		{
 			continue;
 		}
-		for (int branch = 0; branch < 1; branch++)
-		{
-			double t0, rv0[6], lambda0, phi0, tf, dv[3];
+		double t0, h0, rv0[6], lambda0, phi0, tf, dv[3];
 
-			memcpy(rv0, node->problem_.node_info_.back().rv_acc_, 6 * sizeof(double));
-			t0 = node->problem_.node_info_.back().time_acc_;
-			tf = visit_gap[j][1];
+		memcpy(rv0, node->problem_.node_info_.back().rv_acc_, 6 * sizeof(double));
+		t0 = node->problem_.node_info_.back().time_acc_;
+		tf = t0 + 21600.0;						//从6h开始扰动
+		double target_geo[2];
+		get_target_geogetic(j, t0, target_geo);
+		lambda0 = target_geo[1];
+		phi0 = target_geo[0];
+		
 
-			// 经纬度重新指定：适配visit_gap
-			double next_target_geodetic[2];
-			int id = static_cast<int>(visit_gap[j][0]);
-			get_target_geogetic(id, visit_gap[j][1], next_target_geodetic);
-			lambda0 = next_target_geodetic[1];
-			phi0 = next_target_geodetic[0];
+		double norm_r = V_Norm2(rv0, 3);      //轨道高度约束
+		h0 = norm_r - Re_km;
+		if (h0 < 200.0 || h0 - Re_km > 1000.0) continue;
 
-			double norm_r = V_Norm2(rv0, 3);      //轨道高度约束
-			if (norm_r - Re_km < 200.0) continue;
+		double rvf[6];
 
-			double rvf[6];
+		// 打靶到下一个目标，适配visit_gap
+		int flag;
+		obs_shooting(flag, dv, tf, rvf, t0, rv0, h0, j);
 
-			// 打靶到下一个目标，适配visit_gap
-			//shooting_target2target(t0, rv0, visit_gap[j][1], lambda0, phi0, tf, dv, rvf, branch);
-			double h; int flag;
-			single_imp(dv, rvf, flag, h, rv0, t0, tf, lambda0, phi0);
+		double rv1[6], rv2[6];
+		memcpy(rv1, rv0, 6 * sizeof(double));
+		for (int i = 0; i < 3; i++) rv1[i + 3] += dv[i];
 
 
-			//TODO: 将结果输出
-			Node_problem temp;
-			OutputResult temp_out, temp_out2; //机动的信息，机动后的信息
+		//TODO: 将结果输出
+		Node_problem temp;
+		OutputResult temp_out, temp_out2, temp_out3; //机动的信息，机动后的信息
 
-			temp_out.action_ = 1;
-			for (int i = 0; i < 3; i++)  rv0[3 + i] += dv[i];
-			memcpy(temp_out.rv_acc_, rv0, 6 * sizeof(double));
-			memcpy(temp_out.dv_, dv, 3 * sizeof(double));
-			temp_out.time_acc_ = t0;
-			temp_out.point_id_ = 0;
+		temp_out.action_ = 1;
+		for (int i = 0; i < 3; i++)  rv0[3 + i] += dv[i];
+		memcpy(temp_out.rv_acc_, rv0, 6 * sizeof(double));
+		memcpy(temp_out.dv_, dv, 3 * sizeof(double));
+		temp_out.time_acc_ = t0;
+		temp_out.point_id_ = 0;
 
-			temp_out2.action_ = 2;
-			temp_out2.time_acc_ = tf;
-			memcpy(temp_out2.rv_acc_, rvf, 6 * sizeof(double));
-			for (int i = 0; i < 3; i++) temp_out2.dv_[i] = 0.0;
-			temp_out2.point_id_ = j;
+		temp_out2.action_ = 2;
+		temp_out2.time_acc_ = tf;
+		memcpy(temp_out2.rv_acc_, rvf, 6 * sizeof(double));
+		for (int i = 0; i < 3; i++) temp_out2.dv_[i] = 0.0;
+		temp_out2.point_id_ = j + 1;
 
-			temp.node_info_.push_back(temp_out);
-			temp.node_info_.push_back(temp_out2);
+		temp.node_info_.push_back(temp_out);
 
-			child_node_problems.push_back(temp);
+		//检测t0到tf时段内有没有其他能看到的目标
+		std::vector<std::vector<double>> results;
+		AccessPointObjects(rv0, t0, tf, 60.0, 21, results);
+		for (int i = 0; i < TargetNum; i++) {
+			if (i == temp_out2.point_id_ - 1) continue;
+			for (int j = 0; j < results[i].size(); j++) {
+				temp_out3.action_ = 2;
+				temp_out3.time_acc_ = results[i][j];
+				memcpy(temp_out3.rv_acc_, rvf, 6 * sizeof(double));
+				for (int i = 0; i < 3; i++) temp_out2.dv_[i] = 0.0;
+				temp_out3.point_id_ = i + 1;
+				temp.node_info_.push_back(temp_out3);
+			}
 		}
+
+		//最后一个放tf的子节点
+		temp.node_info_.push_back(temp_out2);
+
+		child_node_problems.push_back(temp);
 	}
 }
 
@@ -378,9 +394,12 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 	newTNCs.clear();
 	std::vector<TNC> delete_tnc;
 
-	int visited[GapNum]{};                     //该tnc的已观测序列，初始化为0，观测后为1
+	int visited[TargetNum]{};                     //该tnc的已观测序列，初始化为0，完成重访任务后为1
+	std::vector<std::vector<double>> visible_timelist(21, std::vector<double>(0));	//该tnc的目标点访问时刻表
+	//std::cout << visible_timelist.size() << std::endl;
+	
 
-
+	//TODO：扩展规则会改，此处暂时不更新visited
 	for (int j = 0; j < TreeNum; j++)             //将访问过的所有节点按目标位置+1
 	{
 		std::vector<Node*> solution_one_node;
@@ -389,8 +408,46 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 		tnc.tnc_[j]->getback_problem(solution_one_node, temp);
 		for (int k = 0; k < temp.node_info_.size(); k++)
 		{
-			if(temp.node_info_[k].action_ == 2)
-				visited[temp.node_info_[k].point_id_] ++;
+			if (temp.node_info_[k].action_ == 2)
+				//visited[temp.node_info_[k].point_id_] ++;
+				visible_timelist[temp.node_info_[k].point_id_ - 1].push_back(temp.node_info_[k].time_acc_);
+		}
+	}
+
+	// 如果有目标点的最大重访时间已经不可能满足要求，立即停止扩展
+	std::vector<double> max_revisit_gap;
+	max_revisit_interval_beforeEnd(max_revisit_gap, visible_timelist);
+	int idx = 0;
+	for (auto iter = max_revisit_gap.begin(); iter != max_revisit_gap.end(); iter++) {
+		if (idx != TargetNum - 1) {
+			if (*iter > 21600.0) {
+				std::cout << "目标" << idx + 1 << "的最大重访时间已经达到" << *iter << "sec，该TNC停止扩展" << std::endl;
+				return;
+			}
+		}
+		else {
+			if (*iter > 10800.0) {
+				std::cout << "目标" << idx + 1 << "的最大重访时间已经达到" << *iter << "sec，该TNC停止扩展" << std::endl;
+				return;
+			}
+		}
+	}
+
+	// 扩展完之后更新该时刻表的最大重访时间，如果重访时间满足要求则visited置1
+	std::vector<double> max_revisit_list;
+	max_reseetime(visible_timelist, max_revisit_list);
+	for (int i = 0; i < TargetNum; i++) {
+		if (i != TargetNum - 1) {
+			if (max_revisit_list[i] < 6.0) {
+				visited[i]++;
+				std::cout << "目标" << i + 1 << "观测已完成" << std::endl;
+			}
+		}
+		else {
+			if (max_revisit_list[i] < 3.0) {
+				visited[i]++;
+				std::cout << "目标" << i + 1 << "观测已完成" << std::endl;
+			}
 		}
 	}
 
@@ -477,7 +534,6 @@ void MultiTree::Expansion(std::vector<TNC>& expandinglist)
 			}
 		}
 	}
-
 }
 
 
@@ -494,7 +550,7 @@ void MultiTree::Run()
 	std::vector<TNC> expandinglist;
 	Initialize( expandinglist);                         //初始化首次扩展表
 	
-	while (expandinglist.size() > 0 && layer_ < GapNum) //非空
+	while (expandinglist.size() > 0 && !ifFinished_) //非空
 	{
 		Expansion(expandinglist);
 
@@ -504,7 +560,7 @@ void MultiTree::Run()
 
 		RecordBestResult(expandinglist,fout0);			//记录最好信息
 
-		if (layer_ == GapNum)
+		if (ifFinished_)
 		{
 			std::vector<TNC> x;
 			RecordBestResult(x, fout0);			         //记录最好信息

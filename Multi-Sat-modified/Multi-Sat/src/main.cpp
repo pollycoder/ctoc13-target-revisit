@@ -20,7 +20,7 @@
 const std::string space = " ";
  
 int main() {
-	MultiTree multi_tree(100, 4, 10, 300.0);
+	MultiTree multi_tree(1, 1, 1, 0.05);
 	multi_tree.Run();
 
 	//test_lambert();

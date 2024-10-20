@@ -108,3 +108,21 @@ std::vector<double> max_reseetime(std::vector<std::vector<uint16_t>> reseetime_a
     result[0] = 1;
     return result;
 }
+
+// 时刻表的单位：秒
+void max_revisit_interval_beforeEnd(std::vector<double>& reseetime_max, const std::vector<std::vector<double>>& reseetime_all) {
+    reseetime_max.clear();
+    reseetime_max.resize(TargetNum);
+
+    // 计算每个目标的重访时间
+    for (int i = 0; i < TargetNum; i++) {
+        double max_gap = 0.0;
+        if (reseetime_all[i].empty()) continue;
+        for (int j = 0; j < reseetime_all[i].size() - 1; j++) {
+            double gap_temp = reseetime_all[i][j + 1] - reseetime_all[i][j];
+            if (gap_temp > max_gap) max_gap = gap_temp;
+        }
+
+        reseetime_max[i] = max_gap;
+    }
+}

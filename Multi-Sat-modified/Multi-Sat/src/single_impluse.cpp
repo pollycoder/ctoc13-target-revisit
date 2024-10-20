@@ -639,85 +639,6 @@ void shooting_target2target(const double t0, const double* rv0, const double tim
 	}
 }
 
-void optpara_2_real_mission(const std::vector<double>& X, const int sat_num, std::vector<std::vector<double>>& coe_chief)
-{
-	// Assign the orbit elements of two chief satellites
-	for (int i = 0; i < sat_num; i++) {
-		double a = a0_min + X[i * 6] * (a_max - a0_min);
-		double e = e_scale * X[i * 6 + 1];
-		double inc = i_min + X[i * 6 + 2] * (i_max - i_min);
-		double Omega = X[i * 6 + 3] * D2PI;
-		double omega = X[i * 6 + 4] * D2PI;
-		double f = X[i * 6 + 5] * D2PI;
-		std::vector<double> coe0 = { a, e, inc, Omega, omega, f };
-		coe_chief.push_back(coe0);
-	}
-}
-
-
-double obj_func_initial_coe(const std::vector<double>& X, std::vector<double>& grad, void* f_data) {
-	double* para = static_cast<double*>(f_data);
-	double coe0[6];
-	double average_err;
-	get_initial_coe(X, coe0, average_err);
-	return average_err;
-}
-
-
-void get_initial_coe(const std::vector<double>& X, double* coe0, double& average_err) {
-	std::vector<std::vector<double>> visit_list;
-	double t0, tf;
-	int target_id, flag;
-	std::vector<std::vector<double>> coe_chief;
-
-	average_err = 0.0;
-
-	optpara_2_real_mission(X, 1, coe_chief);
-
-	const double coe0_arr[6] = {
-		coe_chief[0][0], coe_chief[0][1], coe_chief[0][2],
-		coe_chief[0][3], coe_chief[0][4], coe_chief[0][5]
-	};
-	memcpy(coe0, coe0_arr, 6 * sizeof(double));
-	double rv0[6], rvf[6], target_J2000[3];
-	coe2rv(flag, rv0, coe0_arr, mu_km_s);
-
-	for (int i = 0; i < GapNum; i++) {
-		if (i == 0) t0 = 0.0;
-		else t0 = visit_gap[i - 1][1];
-		tf = visit_gap[i][1];
-		target_id = static_cast<int>(visit_gap[i][0]);
-		get_target_R(target_id, tf, target_J2000);
-		propagate_j2(rv0, rvf, t0, tf);
-
-		/*double rf[3] = { rvf[0], rvf[1], rvf[2] };
-		double rf_norm = V_Norm2(rf, 3);
-		V_Multi(rf, rf, Re_km / rf_norm, 3);
-		double r_rel[3];
-		V_Minus(r_rel, rf, target_J2000, 3);
-		double dist = V_Norm2(r_rel, 3);
-		dist /= (Re_km * D2R);
-
-		average_err += dist;*/
-		//std::cout << "Dist = " << dist << std::endl;
-
-		bool ifvisible = is_target_visible(rvf, target_J2000, 19.5 * D2R);
-		if (ifvisible) average_err -= 1000.0;
-		else {
-			double rf[3] = { rvf[0], rvf[1], rvf[2] };
-			double rf_norm = V_Norm2(rf, 3);
-			V_Multi(rf, rf, Re_km / rf_norm, 3);
-			double r_rel[3];
-			V_Minus(r_rel, rf, target_J2000, 3);
-			double dist = V_Norm2(r_rel, 3);
-			dist /= (Re_km * D2R);
-			average_err += dist;
-		}
-
-		memcpy(rv0, rvf, 6 * sizeof(double));
-	}
-}
-
 
 //CTOC13：利用J2Lambert问题，进行单次脉冲修正
 //与张刚论文作用类似，但是脉冲并不是近似切向，在一个轨道高度范围内近似选择脉冲最低且能观测到地面目标的
@@ -730,69 +651,162 @@ void get_initial_coe(const std::vector<double>& X, double* coe0, double& average
 //		RVf[6]：终端位置速度
 //		flag：求解成功返回1，求解失败返回0    
 //		h：最终采用的高度   
-void single_imp(double* dv, double* RVf, int& flag, double& h, const double* RV0, const double& t0, const double& tf, const double& lambda0, const double& phi0) {
+void single_imp(double* dv, double* RVf, int& flag, const double* RV0, const double& t0, const double& tf, const double& lambda0, const double& phi0, const double& h) {
 	double R0[3] = { RV0[0], RV0[1], RV0[2] };
 	double V0[3] = { RV0[3], RV0[4], RV0[5] };
 	double geogetic_Target[2] = { phi0, lambda0 };
 	double R_Target[3];
 	Geodetic2J2000(geogetic_Target, R_Target, tf);
 
-	double hmin = V_Norm2(R0, 3) - Re_km - 20.0;
-	double hmax = V_Norm2(R0, 3) - Re_km + 20.0;
-	h = 0.0;
 	int flag_temp; flag = 0;
 	
 	double dv_norm = 1.0e10;
 	double dv_temp = 1.0e10;
 	double v1temp[3], dvtemp[3], RVf_temp[6], RV1_temp[6];
-	for (double h_temp = hmin; h_temp <= hmax; h_temp += 5.0) {
-		double R = Re_km + h_temp;
-		double Rf_temp[3];
-		V_Multi(Rf_temp, R_Target, R / Re_km, 3);
-		for (int i = 0; i < 3; i++) RVf_temp[i] = Rf_temp[i];
-		J2Lambert_short(flag_temp, RV1_temp, RVf_temp, RV0, tf - t0, mu_km_s);
+	
+	double R = Re_km + h;
+	double Rf_temp[3];
+	V_Multi(Rf_temp, R_Target, R / Re_km, 3);
+	for (int i = 0; i < 3; i++) RVf_temp[i] = Rf_temp[i];
+	J2Lambert_short(flag_temp, RV1_temp, RVf_temp, RV0, tf - t0, mu_km_s);
 
-		bool ifvisible = is_target_visible(RVf_temp, R_Target, 20.0 * D2R);
-		if (!ifvisible) flag_temp = 0;
+	bool ifvisible = is_target_visible(RVf_temp, R_Target, 20.0 * D2R);
+	if (!ifvisible) flag_temp = 0;
 
-		//如果不成功则惩罚
-		if (flag_temp != 1) {
-			h = penalty;
-			for (int j = 0; j < 3; j++) {
-				RVf[j] = penalty;
-				RVf[j + 3] = penalty;
-				dv[j] = penalty;
-			}
-			continue;
+	//如果不成功则惩罚
+	if (flag_temp != 1) {
+		//h = penalty;
+		for (int j = 0; j < 3; j++) {
+			RVf[j] = penalty;
+			RVf[j + 3] = penalty;
+			dv[j] = penalty;
 		}
 
-		//如果成功则计算脉冲
-		for (int i = 0; i < 3; i++) v1temp[i] = RV1_temp[i + 3];
-		V_Minus(dvtemp, v1temp, V0, 3);
-		dv_temp = V_Norm2(dvtemp, 3);
-		if (dv_temp < dv_norm) {
-			memcpy(RVf, RVf_temp, 6 * sizeof(double));
-			memcpy(dv, dvtemp, 3 * sizeof(double));
-			h = h_temp;
-			flag = flag_temp;
-			dv_norm = dv_temp;
-		}
+		flag = 0;
+		return;
+	}
+
+	//如果成功则计算脉冲
+	for (int i = 0; i < 3; i++) v1temp[i] = RV1_temp[i + 3];
+	V_Minus(dvtemp, v1temp, V0, 3);
+	dv_temp = V_Norm2(dvtemp, 3);
+	if (dv_temp < dv_norm) {
+		memcpy(RVf, RVf_temp, 6 * sizeof(double));
+		memcpy(dv, dvtemp, 3 * sizeof(double));
+
+		flag = 1;
+		dv_norm = dv_temp;
 	}
 }
 
-void test_single_impulse() {
-	double tf = 27000.0;
-	double geogetic[2];
-	get_target_geogetic(20, tf, geogetic);
-	double phi0 = geogetic[0];
-	double lambda0 = geogetic[1];
-	double coe0[6] = { 7266.3447300297, 0.00299999999949812, 1.9313492453818, 0.920149515576379, 5.32827748628819, 6.23776341036902 };
-	double RV0[6], dv[3], RVf[6], h;
-	int flag;
-	coe2rv(flag, RV0, coe0, mu_km_s);
+//CTOC13：利用J2Lambert，优化覆盖目标点的轨道高度
+//优化变量（被摄动项）：
+//		h：轨道高度
+//		(lambda, phi)：实际经过的地面经纬度，先扰动时间，再进一步扰动经纬度，扰动量180°
+//		tf：实际的终末时刻，从3h开始扰动，区间为[0,6h]
+//优化指标：
+//		dv：脉冲大小
+//参数：
+//		t0：初始时刻
+//		RV0[6]：初始位置速度
+//		tf：优化前的终末时刻
+//		h0：优化前的轨道高度
+//		target_id：要观测的目标序号（0-20）
+//约束：
+//		保证目标可见
+//		轨道高度200-1000km
+//格式与PSO对应的Obj_func完全一致，我们只需要获取最终的优化变量X
+//不同于之前每次都要先写get_value再包装，这是为了childnode函数看起来思路更清晰
+void perturbation(double& h, double& tf, double& lambda, double& phi, const std::vector<double>& X, const double& h0, const int& id) {
+	const double double_h_pert = 200.0;
+	const double double_angle_pert = DPI;
+	h = h0 + (X[0] - 0.5) * double_h_pert;
+	tf += (X[3] - 0.5) * 43200.0;								// 扰动经纬度之前，先扰动时间
 
-	single_imp(dv, RVf, flag, h, RV0, 0.0, tf, lambda0, phi0);
+	// 获取时间扰动后的经纬度（对地面目标无影响，主要影响海上目标）
+	double target_geo[2];
+	get_target_geogetic(id, tf, target_geo);
+	const double lambda0 = target_geo[1];
+	const double phi0 = target_geo[0];
 
-	std::cout << "flag = " << flag << std::endl;
-	std::cout << "dv = " << dv[0] << " " << dv[1] << " " << dv[2] << std::endl;
+	// 对时间扰动后的经纬度再做角度扰动（对所有目标都有影响）
+	lambda = lambda0 + (X[1] - 0.5) * double_angle_pert;
+	phi = phi0 + (X[2] - 0.5) * double_angle_pert;
+}
+
+
+double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad, void* f_data) {
+	double* para = static_cast<double*>(f_data);
+
+	// 初值
+	const double t0 = para[0];
+	double tf = para[1];
+	const double h0 = para[2];
+	const double RV0[6] = { para[3], para[4], para[5], para[6], para[7], para[8] };
+	const int id = static_cast<int>(para[9]);
+
+	double lambda, phi, h;
+	perturbation(h, tf, lambda, phi, X, h0, id);
+
+	if (tf < t0) {
+		//std::cout << "tf < t0，不符合要求" << std::endl;
+		//std::cout << std::endl;
+		return penalty;
+	}
+
+	double dv[3] = { 0.0, 0.0, 0.0 };
+	double impulse = penalty;
+	double RVf[6] = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
+	int flag = -1;
+	single_imp(dv, RVf, flag, RV0, t0, tf, lambda, phi, h);
+
+	if(h < 200.0 || h > 1000.0) { 
+		//std::cout << "高度不符合要求, h = " << h << " km" << std::endl;
+		//std::cout << std::endl;
+		return penalty; 
+	}
+	if(flag != 1) { 
+		//std::cout << "J2 Lambert 求解失败" << std::endl;
+		//std::cout << std::endl;
+		return penalty; 
+	}
+
+	double target_R[3];
+	double geo[2] = { phi, lambda };
+	Geodetic2J2000(geo, target_R, tf);
+	bool ifVisible = is_target_visible(RVf, target_R, 20.0 * D2R);
+	if(!ifVisible) { 
+		//std::cout << "打靶后目标不可见" << std::endl;
+		//std::cout << std::endl;
+		return penalty; 
+	}
+
+	impulse = V_Norm2(dv, 3);
+	
+	/*std::cout << "X = " << X[0] << " " << X[1] << " " << X[2] << " " << X[3] << std::endl;
+	std::cout << "ID = " << id << std::endl;
+	std::cout << "dv = " << impulse << std::endl;
+	std::cout << std::endl;*/
+	return impulse;
+}
+
+
+void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& t0, const double* RV0, const double& h0, const int& target_id) {
+	double f_data[10] = { t0, tf, h0, RV0[0], RV0[1], RV0[2], RV0[3], RV0[4], RV0[5], target_id };
+
+	double impulse = 0.0;
+	std::vector<double> X = { 0.5, 0.5, 0.5, 0.5 };
+	nlopt_main(obj_func_shooting, f_data, X, impulse, X.size(), 0, 500);		//不输出
+
+	double lambda, phi, h;
+	perturbation(h, tf, lambda, phi, X, h0, target_id);
+
+	single_imp(dv, RVf, flag, RV0, t0, tf, lambda, phi, h);
+	if (flag != 1) {
+		for (int j = 0; j < 3; j++) {
+			dv[j] = penalty;
+			RVf[j] = penalty; RVf[j + 3] = penalty;
+		}
+		tf = penalty;
+	}
 }

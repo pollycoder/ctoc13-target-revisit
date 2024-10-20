@@ -23,6 +23,7 @@
 
 #include "problem_struct.h"
 #include "PSO_DE_NLOPT.h"
+#include "max_reseetime.h"
 
 /****************************************************************************
 * 类  名   : Node
@@ -240,6 +241,7 @@ public:
 	int n_;                                                              //初始节点宽度
 	int b_;                                                              //一个tnc扩展后筛选
 	double dv_max_;
+	bool ifFinished_ = false;											// 重访任务是否完成
 	//int range;
 
 	

@@ -62,8 +62,8 @@ void J2Lambert_short(int&flag, double* RV1, double* RVf, const double* RV0, cons
 
     double radius = V_Norm2(R0, 3);
     double T = D2PI * sqrt(radius * radius * radius / mu_km_s);
-    int Nmin = TOF / T - 1;
-    int Nmax = TOF / T + 1;
+    int Nmin = TOF / T - 2;
+    int Nmax = TOF / T + 2;
 
     int way_opt, branch_opt;
     for (int N = Nmin; N <= Nmax; N++) {
@@ -71,9 +71,18 @@ void J2Lambert_short(int&flag, double* RV1, double* RVf, const double* RV0, cons
         for (int way = 0; way < 2; way++) {
             for (int branch = 0; branch < 2; branch++) {
                 J2Lambert_short(flag_temp, v1temp, v2temp, a, e, R0, Rf, TOF, mu, way, N, branch);
-                if (flag_temp != 1) continue;
-                //if (a * (1 - e) - Re_km < 200.0) continue;
-                //if (a * (1 + e) - Re_km > 1000.0) continue;
+                if (flag_temp != 1) {
+                    //std::cout << "J2求解失败" << std::endl;
+                    continue;
+                }
+                if (a * (1 - e) - Re_km < 201.0) {
+                    //std::cout << "近地点高度过低，peri = " << a * (1-e) - Re_km << " km" << std::endl;
+                    continue;
+                }
+                if (a * (1 + e) - Re_km > 999.0) {
+                    //std::cout << "远地点高度过高，apo = " << a * (1+e) - Re_km  << " km" << std::endl;
+                    continue;
+                }
 
                 V_Minus(dv1temp, v1temp, V0, 3);
                 dvtemp = V_Norm2(dv1temp, 3);
@@ -92,7 +101,7 @@ void J2Lambert_short(int&flag, double* RV1, double* RVf, const double* RV0, cons
         }
     }
 
-    if (flag != 1) std::cout << "J2 Lambert failed." << std::endl;
+    //if (flag != 1) std::cout << "J2 Lambert failed." << std::endl;
     //else std::cout << "way = " << way_opt << " " << "branch = " << branch_opt << std::endl;*/
 }
 
