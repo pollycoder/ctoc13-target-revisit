@@ -279,7 +279,11 @@ std::vector<Node*> Tree::ExpandNode(Node* node, const int* visited, const std::v
 	
 	for (int i = 0; i < problem_.size(); i++)
 	{
-		if (visited[problem_[i].node_info_.back().point_id_] > 0 || V_Norm2(problem_[i].node_info_[0].dv_,3) > dv_max_) continue; //已经访问过 大于dv_max
+		
+
+		// 我们在problems_里面挑选要扩展的节点
+		// 扩展应该是都要扩展的
+		if (visited[problem_[i].node_info_.back().point_id_] > 0 || V_Norm2(problem_[i].node_info_[0].dv_, 3) > dv_max_) continue; //已经访问过 大于dv_max
 
 		int id = problem_[i].node_info_.back().point_id_;
 		
@@ -320,12 +324,7 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 		memcpy(rv0, node->problem_.node_info_.back().rv_acc_, 6 * sizeof(double));
 		t0 = node->problem_.node_info_.back().time_acc_;
 		tf = t0 + 21600.0;						//从6h开始扰动
-		double target_geo[2];
-		get_target_geogetic(j, t0, target_geo);
-		lambda0 = target_geo[1];
-		phi0 = target_geo[0];
 		
-
 		double norm_r = V_Norm2(rv0, 3);      //轨道高度约束
 		h0 = norm_r - Re_km;
 		if (h0 < 200.0 || h0 - Re_km > 1000.0) continue;
@@ -365,11 +364,11 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 		AccessPointObjects(rv0, t0, tf, 60.0, 21, results);
 		for (int i = 0; i < TargetNum; i++) {
 			if (i == temp_out2.point_id_ - 1) continue;
-			for (int j = 0; j < results[i].size(); j++) {
+			for (int k = 0; k < results[i].size(); k++) {
 				temp_out3.action_ = 2;
-				temp_out3.time_acc_ = results[i][j];
+				temp_out3.time_acc_ = results[i][k];
 				memcpy(temp_out3.rv_acc_, rvf, 6 * sizeof(double));
-				for (int i = 0; i < 3; i++) temp_out2.dv_[i] = 0.0;
+				for (int m = 0; m < 3; m++) temp_out2.dv_[m] = 0.0;
 				temp_out3.point_id_ = i + 1;
 				temp.node_info_.push_back(temp_out3);
 			}

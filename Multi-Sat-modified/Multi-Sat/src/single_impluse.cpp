@@ -718,8 +718,8 @@ void single_imp(double* dv, double* RVf, int& flag, const double* RV0, const dou
 //格式与PSO对应的Obj_func完全一致，我们只需要获取最终的优化变量X
 //不同于之前每次都要先写get_value再包装，这是为了childnode函数看起来思路更清晰
 void perturbation(double& h, double& tf, double& lambda, double& phi, const std::vector<double>& X, const double& h0, const int& id) {
-	const double double_h_pert = 200.0;
-	const double double_angle_pert = DPI;
+	const double double_h_pert = 100.0;
+	const double double_angle_pert = 12.0 * D2R;
 	h = h0 + (X[0] - 0.5) * double_h_pert;
 	tf += (X[3] - 0.5) * 43200.0;								// 扰动经纬度之前，先扰动时间
 
@@ -760,7 +760,7 @@ double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad
 	int flag = -1;
 	single_imp(dv, RVf, flag, RV0, t0, tf, lambda, phi, h);
 
-	if(h < 200.0 || h > 1000.0) { 
+	if(h < 220.0 || h > 980.0) { 
 		//std::cout << "高度不符合要求, h = " << h << " km" << std::endl;
 		//std::cout << std::endl;
 		return penalty; 
@@ -772,9 +772,8 @@ double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad
 	}
 
 	double target_R[3];
-	double geo[2] = { phi, lambda };
-	Geodetic2J2000(geo, target_R, tf);
-	bool ifVisible = is_target_visible(RVf, target_R, 20.0 * D2R);
+	get_target_R(id, tf, target_R);
+	bool ifVisible = is_target_visible(RVf, target_R, 19.5 * D2R);
 	if(!ifVisible) { 
 		//std::cout << "打靶后目标不可见" << std::endl;
 		//std::cout << std::endl;
@@ -796,7 +795,7 @@ void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& 
 
 	double impulse = 0.0;
 	std::vector<double> X = { 0.5, 0.5, 0.5, 0.5 };
-	nlopt_main(obj_func_shooting, f_data, X, impulse, X.size(), 0, 500);		//不输出
+	nlopt_main(obj_func_shooting, f_data, X, impulse, X.size(), 0, 100);		//不输出
 
 	double lambda, phi, h;
 	perturbation(h, tf, lambda, phi, X, h0, target_id);

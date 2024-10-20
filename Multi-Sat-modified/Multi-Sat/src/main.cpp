@@ -16,7 +16,6 @@
 #include "multitree_beam.h"
 #include "single_impluse.h"
 #include "J2Lambert.h"
-
 const std::string space = " ";
  
 int main() {
