@@ -56,8 +56,8 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 	lambda = lambda0;
 	phi = phi0;
 
-	Nmax = floor(double(Day) * 86400.0 / (2.0 * DPI * sqrt(a0 * a0 * a0 / mu_km_s)));//最多转移圈数
-	Nmin = floor((double(Day) - 1.0) * 86400.0 / (2.0 * DPI * sqrt(a0 * a0 * a0 / mu_km_s)));// +1;//最少转移圈数
+	Nmax = floor(10800.0 / (2.0 * DPI * sqrt(a0 * a0 * a0 / mu_km_s)));//最多转移圈数(3h)
+	Nmin = 0;//floor((double(Day) - 1.0) * 86400.0 / (2.0 * DPI * sqrt(a0 * a0 * a0 / mu_km_s)));// +1;//最少转移圈数
 
 	k1 = (1.0 - e0 * e0) / (2.0 * e0) / (e0 * cos(f00 - gamma00) + cos(gamma00)) * (sin(f00 - gamma00) + sin(f00) * cos(gamma00) / (1.0 + e0 * cos(f00)));
 	k2 = (1.0 - e0 * e0) / 2.0 * (cos(f00 - gamma00) + cos(E00) * cos(gamma00)) / (e0 * cos(f00 - gamma00) + cos(gamma00));
@@ -101,7 +101,7 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 					as = root[i] * root[i];
 				}
 			}
-			//if (as < Re_km || as > Re_km + 1000.0)continue;
+			if (as < Re_km || as > Re_km + 1000.0)continue;
 
 			//线性J2模型相关
 			C_J2 = 1.5 * J2 * Re_km * Re_km * sqrt(mu_km_s) * pow(as, -3.5);
@@ -311,7 +311,7 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 			M0m = M00 - k3 * (am / a0 - 1.0);
 			//if (em < 0.0 || em > 1.0)continue;
 			if (am * (1.0 - em) < Re_km + 200.0)continue;
-			if (am * (1.0 + em) > Re_km + 1500.0)continue;
+			if (am * (1.0 + em) > Re_km + 1000.0)continue;
 
 			//平根转化为瞬根，由于平瞬根转换程序中使用的Re为m，在这里也临时改成m来计算
 			mcoe[0] = am * 1000.0;
@@ -353,7 +353,8 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 	//	flag0 = 0;
 	//else
 	//	flag0 = 1;
-	flag0 = 1;
+	if (V_Norm2(dv, 3) > 0.1) flag0 = 0;
+	else flag0 = 1;
 }
 
 
@@ -439,7 +440,7 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 					as = root[i] * root[i];
 				}
 			}
-			//if (as < Re_km || as > Re_km + 1000.0)continue;
+			//if (as < Re_km + 200.0 || as > Re_km + 1000.0)continue;
 
 			//线性J2模型相关
 			C_J2 = 1.5 * J2 * Re_km * Re_km * sqrt(mu_km_s) * pow(as, -3.5);
@@ -464,7 +465,7 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 					am = root[i] * root[i];
 				}
 			}
-			//if (am < Re_km + 200.0)continue;
+			if (am < Re_km + 200.0)continue;
 
 			//此时am已求出，且i,Omega不变，需计算其他平轨道根数（近似解）
 			em = e0 + k2 * (am / a0 - 1.0);
@@ -701,37 +702,24 @@ void single_imp(double* dv, double* RVf, int& flag, const double* RV0, const dou
 
 //CTOC13：利用J2Lambert，优化覆盖目标点的轨道高度
 //优化变量（被摄动项）：
-//		h：轨道高度
-//		(lambda, phi)：实际经过的地面经纬度，先扰动时间，再进一步扰动经纬度，扰动量180°
-//		tf：实际的终末时刻，从3h开始扰动，区间为[0,6h]
+//		dv[3]：脉冲，每个分量扰动量30m/s
+//		tf：实际的终末时刻，从6h开始扰动，区间为[0,12h]
 //优化指标：
 //		dv：脉冲大小
 //参数：
 //		t0：初始时刻
 //		RV0[6]：初始位置速度
-//		tf：优化前的终末时刻
-//		h0：优化前的轨道高度
+//		tf：优化前的终末时刻，固定3h
+//		dv[3]：优化前的脉冲
 //		target_id：要观测的目标序号（0-20）
 //约束：
 //		保证目标可见
 //		轨道高度200-1000km
-//格式与PSO对应的Obj_func完全一致，我们只需要获取最终的优化变量X
-//不同于之前每次都要先写get_value再包装，这是为了childnode函数看起来思路更清晰
-void perturbation(double& h, double& tf, double& lambda, double& phi, const std::vector<double>& X, const double& h0, const int& id) {
-	const double double_h_pert = 100.0;
-	const double double_angle_pert = 12.0 * D2R;
-	h = h0 + (X[0] - 0.5) * double_h_pert;
-	tf += (X[3] - 0.5) * 43200.0;								// 扰动经纬度之前，先扰动时间
-
-	// 获取时间扰动后的经纬度（对地面目标无影响，主要影响海上目标）
-	double target_geo[2];
-	get_target_geogetic(id, tf, target_geo);
-	const double lambda0 = target_geo[1];
-	const double phi0 = target_geo[0];
-
-	// 对时间扰动后的经纬度再做角度扰动（对所有目标都有影响）
-	lambda = lambda0 + (X[1] - 0.5) * double_angle_pert;
-	phi = phi0 + (X[2] - 0.5) * double_angle_pert;
+void perturbation(double* dv, double& tf, const std::vector<double>& X) {
+	tf += (X[3] - 0.5) * 43200.0;								
+	dv[0] += (X[0] - 0.5) * 100;
+	dv[1] += (X[1] - 0.5) * 100;
+	dv[2] += (X[2] - 0.5) * 100;
 }
 
 
@@ -741,12 +729,11 @@ double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad
 	// 初值
 	const double t0 = para[0];
 	double tf = para[1];
-	const double h0 = para[2];
-	const double RV0[6] = { para[3], para[4], para[5], para[6], para[7], para[8] };
-	const int id = static_cast<int>(para[9]);
+	double dv[3] = { para[2], para[3], para[4] };
+	const double RV0[6] = { para[5], para[6], para[7], para[8], para[9], para[10] };
+	const int id = static_cast<int>(para[11]);
 
-	double lambda, phi, h;
-	perturbation(h, tf, lambda, phi, X, h0, id);
+	perturbation(dv, tf, X);
 
 	if (tf < t0) {
 		//std::cout << "tf < t0，不符合要求" << std::endl;
@@ -754,23 +741,22 @@ double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad
 		return penalty;
 	}
 
-	double dv[3] = { 0.0, 0.0, 0.0 };
-	double impulse = penalty;
 	double RVf[6] = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
-	int flag = -1;
-	single_imp(dv, RVf, flag, RV0, t0, tf, lambda, phi, h);
+	double RV1[6]; memcpy(RV1, RV0, 6 * sizeof(double));
+	for (int i = 0; i < 3; i++) RV1[i + 3] += dv[i];
 
-	if(h < 220.0 || h > 980.0) { 
+	double coe[6]; int flag;
+	rv2coe(flag, coe, RV1, mu_km_s);
+	double a = coe[0], e = coe[1];
+
+	// 用二体近似，为了给J2留出余量，设置20km的冗余
+	if(a * (1 - e) - Re_km < 220.0 || a * (1 + e) - Re_km > 980.0) {
 		//std::cout << "高度不符合要求, h = " << h << " km" << std::endl;
 		//std::cout << std::endl;
 		return penalty; 
 	}
-	if(flag != 1) { 
-		//std::cout << "J2 Lambert 求解失败" << std::endl;
-		//std::cout << std::endl;
-		return penalty; 
-	}
-
+	
+	propagate_j2(RV1, RVf, t0, tf);
 	double target_R[3];
 	get_target_R(id, tf, target_R);
 	bool ifVisible = is_target_visible(RVf, target_R, 19.5 * D2R);
@@ -780,7 +766,7 @@ double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad
 		return penalty; 
 	}
 
-	impulse = V_Norm2(dv, 3);
+	double impulse = V_Norm2(dv, 3);
 	
 	/*std::cout << "X = " << X[0] << " " << X[1] << " " << X[2] << " " << X[3] << std::endl;
 	std::cout << "ID = " << id << std::endl;
@@ -789,23 +775,38 @@ double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad
 	return impulse;
 }
 
-
+// 利用h0给dv的初值，默认高度与初始高度一致，扰动之后的值与h0无关
 void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& t0, const double* RV0, const double& h0, const int& target_id) {
-	double f_data[10] = { t0, tf, h0, RV0[0], RV0[1], RV0[2], RV0[3], RV0[4], RV0[5], target_id };
-
-	double impulse = 0.0;
-	std::vector<double> X = { 0.5, 0.5, 0.5, 0.5 };
-	nlopt_main(obj_func_shooting, f_data, X, impulse, X.size(), 0, 100);		//不输出
-
-	double lambda, phi, h;
-	perturbation(h, tf, lambda, phi, X, h0, target_id);
-
-	single_imp(dv, RVf, flag, RV0, t0, tf, lambda, phi, h);
+	double target_geo[2];
+	get_target_geogetic(target_id, tf, target_geo);
+	double lambda = target_geo[1];
+	double phi = target_geo[0];
+	double m0 = 1000.0, mf;
+	int NR;
+	//single_imp(dv, RVf, flag, RV0, t0, tf, lambda, phi, h0);
+	single_imp(m0, t0, RV0, lambda, phi, 1, flag, mf, tf, dv, NR);
+	//std::cout << dv[0] << " " << dv[1] << " " << dv[2] << std::endl;
+	//std::cout << flag << std::endl;
 	if (flag != 1) {
 		for (int j = 0; j < 3; j++) {
 			dv[j] = penalty;
 			RVf[j] = penalty; RVf[j + 3] = penalty;
 		}
 		tf = penalty;
+		return;
 	}
+
+	double f_data[12] = { t0, tf, dv[0], dv[1], dv[2], RV0[0], RV0[1], RV0[2], RV0[3], RV0[4], RV0[5], target_id};
+
+	double impulse = 0.0;
+	std::vector<double> X = { 0.5, 0.5, 0.5, 0.5 };
+	nlopt_main(obj_func_shooting, f_data, X, impulse, X.size(), 0, 1000);		//不输出
+
+	perturbation(dv, tf, X);
+
+	double RV1[6];
+	memcpy(RV1, RV0, 6 * sizeof(double));
+	for (int i = 0; i < 3; i++) RV1[i + 3] += dv[i];
+	propagate_j2(RV1, RVf, t0, tf);
+
 }
