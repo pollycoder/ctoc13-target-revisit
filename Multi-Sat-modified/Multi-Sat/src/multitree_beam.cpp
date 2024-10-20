@@ -420,7 +420,7 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 	for (auto iter = max_revisit_gap.begin(); iter != max_revisit_gap.end(); iter++) {
 		if (idx != TargetNum - 1) {
 			if (*iter > 21600.0) {
-				std::cout << "目标" << idx + 1 << "的最大重访时间已经达到" << *iter << "sec，该TNC停止扩展" << std::endl;
+				//std::cout << "目标" << idx + 1 << "的最大重访时间已经达到" << *iter << "sec，该TNC停止扩展" << std::endl;
 				return;
 			}
 		}

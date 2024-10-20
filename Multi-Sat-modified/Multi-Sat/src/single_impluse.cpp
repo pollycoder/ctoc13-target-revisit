@@ -717,9 +717,9 @@ void single_imp(double* dv, double* RVf, int& flag, const double* RV0, const dou
 //		轨道高度200-1000km
 void perturbation(double* dv, double& tf, const std::vector<double>& X) {
 	tf += (X[3] - 0.5) * 43200.0;								
-	dv[0] += (X[0] - 0.5) * 100;
-	dv[1] += (X[1] - 0.5) * 100;
-	dv[2] += (X[2] - 0.5) * 100;
+	dv[0] += (X[0] - 0.5) * 0.05;
+	dv[1] += (X[1] - 0.5) * 0.05;
+	dv[2] += (X[2] - 0.5) * 0.05;
 }
 
 
@@ -800,7 +800,7 @@ void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& 
 
 	double impulse = 0.0;
 	std::vector<double> X = { 0.5, 0.5, 0.5, 0.5 };
-	nlopt_main(obj_func_shooting, f_data, X, impulse, X.size(), 0, 1000);		//不输出
+	nlopt_main(obj_func_shooting, f_data, X, impulse, X.size(), 0, 10000);		//不输出
 
 	perturbation(dv, tf, X);
 
