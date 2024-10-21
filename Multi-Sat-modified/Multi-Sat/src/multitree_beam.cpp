@@ -319,21 +319,23 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 		{
 			continue;
 		}
-		double t0, h0, rv0[6], lambda0, phi0, tf, dv[3];
+		double t0, h0, rv0[6], coe0[6], lambda0, phi0, tf, dv[3], a, e, hmin, hmax;
+		int flag;
 
 		memcpy(rv0, node->problem_.node_info_.back().rv_acc_, 6 * sizeof(double));
 		t0 = node->problem_.node_info_.back().time_acc_;
-		tf = t0 + 21600.0;						//从6h开始扰动
+		tf = t0 + 21600.0;						//从6h开始扰动，瞎给的，用的是张刚论文的方法给初值，tf除了ship随便取
 		
-		double norm_r = V_Norm2(rv0, 3);      //轨道高度约束
-		h0 = norm_r - Re_km;
-		if (h0 < 200.0 || h0 - Re_km > 1000.0) continue;
-
+		rv2coe(flag, coe0, rv0, mu_km_s);
+		a = coe0[0]; e = coe0[1];
+		hmin = a * (1 - e) - Re_km;
+		hmax = a * (1 + e) - Re_km;
+		if (hmin < 220.0 || hmax > 980.0) continue;
+		
 		double rvf[6];
 
 		// 打靶到下一个目标，适配visit_gap
-		int flag;
-		obs_shooting(flag, dv, tf, rvf, t0, rv0, h0, j);
+		obs_shooting(flag, dv, tf, rvf, t0, rv0, j);
 
 		double rv1[6], rv2[6];
 		memcpy(rv1, rv0, 6 * sizeof(double));
@@ -399,12 +401,17 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 	
 
 	//TODO：扩展规则会改，此处暂时不更新visited
+	double tf_max = 0.0;
+	double tf_min = 1.0e10;
 	for (int j = 0; j < TreeNum; j++)             //将访问过的所有节点按目标位置+1
 	{
 		std::vector<Node*> solution_one_node;
 		tnc.tnc_[j]->return_node_sequence(solution_one_node);
 		Solution_one temp;
 		tnc.tnc_[j]->getback_problem(solution_one_node, temp);
+		if(temp.node_info_[temp.node_info_.size() - 1].time_acc_ < tf_min) tf_min = temp.node_info_[temp.node_info_.size() - 1].time_acc_;
+		if(temp.node_info_[temp.node_info_.size() - 1].time_acc_ > tf_max) tf_max = temp.node_info_[temp.node_info_.size() - 1].time_acc_;
+
 		for (int k = 0; k < temp.node_info_.size(); k++)
 		{
 			if (temp.node_info_[k].action_ == 2)
@@ -413,20 +420,24 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 		}
 	}
 
+	bool ifsync = false;
+	if (tf_max - tf_min < 3600.0) ifsync = true;
+
 	// 如果有目标点的最大重访时间已经不可能满足要求，立即停止扩展
+	// 这一段应该先给8颗星的可能性都做一下验证，确认8颗星已扩展的时间相差不到1h为止
 	std::vector<double> max_revisit_gap;
 	max_revisit_interval_beforeEnd(max_revisit_gap, visible_timelist);
 	int idx = 0;
 	for (auto iter = max_revisit_gap.begin(); iter != max_revisit_gap.end(); iter++) {
-		if (idx != TargetNum - 1) {
-			if (*iter > 21600.0) {
-				//std::cout << "目标" << idx + 1 << "的最大重访时间已经达到" << *iter << "sec，该TNC停止扩展" << std::endl;
+		if (idx != 20) {
+			if (*iter > 21600.0 && ifsync) {
+				std::cout << "目标" << idx + 1 << "的最大重访时间已经达到" << *iter << "sec，该TNC停止扩展" << std::endl;
 				return;
 			}
 		}
 		else {
-			if (*iter > 10800.0) {
-				std::cout << "目标" << idx + 1 << "的最大重访时间已经达到" << *iter << "sec，该TNC停止扩展" << std::endl;
+			if (*iter > 10800.0 && ifsync) {
+				//std::cout << "目标" << idx + 1 << "的最大重访时间已经达到" << *iter << "sec，该TNC停止扩展" << std::endl;
 				return;
 			}
 		}
@@ -549,7 +560,7 @@ void MultiTree::Run()
 	std::vector<TNC> expandinglist;
 	Initialize( expandinglist);                         //初始化首次扩展表
 	
-	while (expandinglist.size() > 0 && !ifFinished_) //非空
+	while (expandinglist.size() > 0 && result_now_.time_cost_ < 2.0 * 86400.0) //非空
 	{
 		Expansion(expandinglist);
 
@@ -580,7 +591,7 @@ void MultiTree::RecordBestResult(std::vector<TNC>& expandinglist, std::ofstream&
 		result_now_.height_aver_ = expandinglist[0].op_index_.height_aver;
 	}
 	std::cout << "Removal total num, Time:  " << result_now_.total_observed_num_ << " " << result_now_.time_cost_ << std::endl;
-	fout1 << "Removal total num, Time:  " << result_now_.total_observed_num_ << " " << result_now_.time_cost_ << std::endl;
+	//fout1 << "Removal total num, Time:  " << result_now_.total_observed_num_ << " " << result_now_.time_cost_ << std::endl;
 
 
 	std::cout << expandinglist.size();
@@ -607,17 +618,28 @@ void MultiTree::RecordBestResult(std::vector<TNC>& expandinglist, std::ofstream&
 	
 	//按照格式输出最终结果
 	
-	fout1 << std::endl << std::endl << "清理个数：" << result_now_.total_observed_num_ << "当且节点数量" << expandinglist.size() << "当前时间" << result_now_.time_cost_ << std::endl;
+	//fout1 << std::endl << std::endl << "清理个数：" << result_now_.total_observed_num_ << "当且节点数量" << expandinglist.size() << "当前时间" << result_now_.time_cost_ << std::endl;
 	for (int id_sat = 0; id_sat < TreeNum; id_sat++)
 	{
 		for (int i = 0; i < result_now_.solution_[id_sat].node_info_.size(); i++)
 		{
-			fout1 << std::fixed << i + 1 << " " << result_now_.solution_[id_sat].node_info_[i].action_ << " " << std::fixed << std::setprecision(16) << result_now_.solution_[id_sat].node_info_[i].time_acc_ << " ";
-			for (int j = 0; j < 6; j++)
-				fout1 << std::fixed << std::setprecision(16) << result_now_.solution_[id_sat].node_info_[i].rv_acc_[j] << " ";
-			for (int j = 0; j < 3; j++)
-				fout1 << std::fixed << std::setprecision(16) << result_now_.solution_[id_sat].node_info_[i].dv_[j] << " ";
-			fout1 << std::fixed << std::setprecision(16) << result_now_.solution_[id_sat].node_info_[i].point_id_ << std::endl;
+			//fout1 << std::fixed << i + 1 << " " << result_now_.solution_[id_sat].node_info_[i].action_ << " " << std::fixed << std::setprecision(16) << result_now_.solution_[id_sat].node_info_[i].time_acc_ << " ";
+			if (result_now_.solution_[id_sat].node_info_[i].action_ == 0) {
+				double rv0[6], coe[6]; int flag;
+				memcpy(rv0, result_now_.solution_[id_sat].node_info_[i].rv_acc_, 6 * sizeof(double));
+				rv2coe(flag, coe, rv0, mu_km_s);
+				fout1 << std::fixed << std::setprecision(16) << coe[0] << " " << coe[1] << " " << coe[2] << " " << coe[3] << " " << coe[4] << " " << coe[5] << std::endl;
+			}
+			else if (result_now_.solution_[id_sat].node_info_[i].action_ == 1) {
+				fout1 << std::fixed << std::setprecision(16) << result_now_.solution_[id_sat].node_info_[i].time_acc_ << " ";
+				for (int j = 0; j < 3; j++) {
+					fout1 << std::fixed << std::setprecision(16) << result_now_.solution_[id_sat].node_info_[i].dv_[j] << " ";
+				}
+				fout1 << std::endl;
+			}
+			else {
+				//fout1 << std::fixed << std::setprecision(16) << result_now_.solution_[id_sat].node_info_[i].point_id_ << std::endl;
+			}
 		}
 	}
 

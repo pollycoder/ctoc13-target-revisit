@@ -75,11 +75,11 @@ void J2Lambert_short(int&flag, double* RV1, double* RVf, const double* RV0, cons
                     //std::cout << "J2求解失败" << std::endl;
                     continue;
                 }
-                if (a * (1 - e) - Re_km < 201.0) {
+                if (a * (1 - e) - Re_km < 225.0) {
                     //std::cout << "近地点高度过低，peri = " << a * (1-e) - Re_km << " km" << std::endl;
                     continue;
                 }
-                if (a * (1 + e) - Re_km > 999.0) {
+                if (a * (1 + e) - Re_km > 975.0) {
                     //std::cout << "远地点高度过高，apo = " << a * (1+e) - Re_km  << " km" << std::endl;
                     continue;
                 }

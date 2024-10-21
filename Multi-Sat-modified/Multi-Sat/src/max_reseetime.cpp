@@ -116,8 +116,8 @@ void max_revisit_interval_beforeEnd(std::vector<double>& reseetime_max, const st
 
     // 计算每个目标的重访时间
     for (int i = 0; i < TargetNum; i++) {
-        double max_gap = 0.0;
         if (reseetime_all[i].empty()) continue;
+        double max_gap = reseetime_all[i][0];
         for (int j = 0; j < reseetime_all[i].size() - 1; j++) {
             double gap_temp = reseetime_all[i][j + 1] - reseetime_all[i][j];
             if (gap_temp > max_gap) max_gap = gap_temp;

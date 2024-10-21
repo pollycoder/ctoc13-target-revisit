@@ -717,9 +717,9 @@ void single_imp(double* dv, double* RVf, int& flag, const double* RV0, const dou
 //		轨道高度200-1000km
 void perturbation(double* dv, double& tf, const std::vector<double>& X) {
 	tf += (X[3] - 0.5) * 43200.0;								
-	dv[0] += (X[0] - 0.5) * 0.05;
-	dv[1] += (X[1] - 0.5) * 0.05;
-	dv[2] += (X[2] - 0.5) * 0.05;
+	dv[0] += (X[0] - 0.5) * 1.0e3;
+	dv[1] += (X[1] - 0.5) * 1.0e3;
+	dv[2] += (X[2] - 0.5) * 1.0e3;
 }
 
 
@@ -750,7 +750,9 @@ double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad
 	double a = coe[0], e = coe[1];
 
 	// 用二体近似，为了给J2留出余量，设置20km的冗余
-	if(a * (1 - e) - Re_km < 220.0 || a * (1 + e) - Re_km > 980.0) {
+	double peri = a * (1 - e) - Re_km;
+	double apo = a * (1 + e) - Re_km;
+	if(peri < 220.0 || apo > 980.0) {
 		//std::cout << "高度不符合要求, h = " << h << " km" << std::endl;
 		//std::cout << std::endl;
 		return penalty; 
@@ -759,7 +761,7 @@ double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad
 	propagate_j2(RV1, RVf, t0, tf);
 	double target_R[3];
 	get_target_R(id, tf, target_R);
-	bool ifVisible = is_target_visible(RVf, target_R, 19.5 * D2R);
+	bool ifVisible = is_target_visible(RVf, target_R, 20.0 * D2R);
 	if(!ifVisible) { 
 		//std::cout << "打靶后目标不可见" << std::endl;
 		//std::cout << std::endl;
@@ -768,25 +770,49 @@ double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad
 
 	double impulse = V_Norm2(dv, 3);
 	
-	/*std::cout << "X = " << X[0] << " " << X[1] << " " << X[2] << " " << X[3] << std::endl;
-	std::cout << "ID = " << id << std::endl;
-	std::cout << "dv = " << impulse << std::endl;
-	std::cout << std::endl;*/
 	return impulse;
 }
 
 // 利用h0给dv的初值，默认高度与初始高度一致，扰动之后的值与h0无关
-void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& t0, const double* RV0, const double& h0, const int& target_id) {
+void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& t0, const double* RV0, const int& target_id) {
+	//std::vector<std::vector<double>> results;
+	//AccessPointObjects(RV0, t0, 2.0 * 86400.0, 60.0, TargetNum, results);
+
+	//// 如果没有可见时段，暂时设为惩罚
+	//if (results[target_id].empty()) {
+	//	for (int j = 0; j < 3; j++) {
+	//		dv[j] = penalty;
+	//		RVf[j] = penalty; RVf[j + 3] = penalty;
+	//	}
+	//	tf = penalty;
+	//	return;
+	//}
+
+	//tf = results[target_id][0];
+	
+
+	//double rv0[6], rvf[6], coef[6];
+	//memcpy(rv0, RV0, 6 * sizeof(double));
+	//propagate_j2(rv0, rvf, t0, tf);
+	//rv2coe(flag, coef, rvf, mu_km_s);
+	//double rf[3] = { rvf[0], rvf[1], rvf[2] };
+	//double h = V_Norm2(rf, 3) - Re_km;
+
 	double target_geo[2];
 	get_target_geogetic(target_id, tf, target_geo);
 	double lambda = target_geo[1];
 	double phi = target_geo[0];
+
 	double m0 = 1000.0, mf;
 	int NR;
-	//single_imp(dv, RVf, flag, RV0, t0, tf, lambda, phi, h0);
+	
+	//J2Lambert的方法
+	//single_imp(dv, RVf, flag, RV0, t0, tf, lambda, phi, h);
+
+	//注意张刚论文的方法里，tf是飞行时长，不是时刻
 	single_imp(m0, t0, RV0, lambda, phi, 1, flag, mf, tf, dv, NR);
-	//std::cout << dv[0] << " " << dv[1] << " " << dv[2] << std::endl;
-	//std::cout << flag << std::endl;
+	tf += t0;
+	
 	if (flag != 1) {
 		for (int j = 0; j < 3; j++) {
 			dv[j] = penalty;
@@ -800,7 +826,7 @@ void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& 
 
 	double impulse = 0.0;
 	std::vector<double> X = { 0.5, 0.5, 0.5, 0.5 };
-	nlopt_main(obj_func_shooting, f_data, X, impulse, X.size(), 0, 10000);		//不输出
+	nlopt_main(obj_func_shooting, f_data, X, impulse, X.size());		//不输出
 
 	perturbation(dv, tf, X);
 
