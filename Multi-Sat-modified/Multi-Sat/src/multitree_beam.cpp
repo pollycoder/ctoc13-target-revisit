@@ -461,6 +461,12 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 		}
 	}
 
+	bool ifdone = true;
+	for (int i = 0; i < TargetNum; i++) {
+		if (visited[i] == 0) ifdone = false;
+	}
+	ifFinished_ = ifdone;
+
 	double time[TreeNum]; double time_min = 1.e20; int counter = 0; //扩展时间最小的那颗树
 	for (int i = 0; i < TreeNum; i++)
 	{
@@ -560,7 +566,7 @@ void MultiTree::Run()
 	std::vector<TNC> expandinglist;
 	Initialize( expandinglist);                         //初始化首次扩展表
 	
-	while (expandinglist.size() > 0 && result_now_.time_cost_ < 2.0 * 86400.0) //非空
+	while (expandinglist.size() > 0 && !ifFinished_) //非空
 	{
 		Expansion(expandinglist);
 
