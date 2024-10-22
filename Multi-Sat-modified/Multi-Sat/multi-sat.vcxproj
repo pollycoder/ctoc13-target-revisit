@@ -230,6 +230,12 @@
     <ClInclude Include="include\single_impluse.h" />
     <ClInclude Include="include\visibility_4_targets.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="bin\nlopt.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="lib\nlopt.lib" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
