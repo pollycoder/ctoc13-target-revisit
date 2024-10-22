@@ -426,10 +426,10 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 	}
 
 	bool ifsync = false;
-	if (tf_max - tf_min < 3600.0) ifsync = true;
+	if (tf_max - tf_min < 7200.0) ifsync = true;
 
 	// 如果有目标点的最大重访时间已经不可能满足要求，立即停止扩展
-	// 这一段应该先给8颗星的可能性都做一下验证，确认8颗星已扩展的时间相差不到1h为止
+	// 这一段应该先给8颗星的可能性都做一下验证，确认8颗星已扩展的时间相差不到2h为止
 	std::vector<double> max_revisit_gap;
 	max_revisit_interval_beforeEnd(max_revisit_gap, visible_timelist);
 	int idx = 0;
