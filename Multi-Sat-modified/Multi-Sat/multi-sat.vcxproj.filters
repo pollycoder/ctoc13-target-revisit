@@ -222,4 +222,10 @@
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="bin\nlopt.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="lib\nlopt.lib" />
+  </ItemGroup>
 </Project>

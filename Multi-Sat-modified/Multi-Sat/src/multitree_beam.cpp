@@ -324,7 +324,7 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 
 		memcpy(rv0, node->problem_.node_info_.back().rv_acc_, 6 * sizeof(double));
 		t0 = node->problem_.node_info_.back().time_acc_;
-		tf = t0 + 21600.0;						//从6h开始扰动，瞎给的，用的是张刚论文的方法给初值，tf除了ship随便取
+		tf = t0 + 10800.0;						//从3h开始扰动，瞎给的，用的是张刚论文的方法给初值，tf除了ship随便取
 		
 		rv2coe(flag, coe0, rv0, mu_km_s);
 		a = coe0[0]; e = coe0[1];
@@ -420,6 +420,11 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 		}
 	}
 
+	// Push back之后对可见性时刻表排序
+	for (int j = 0; j < TargetNum; j++) {
+		std::sort(visible_timelist[j].begin(), visible_timelist[j].end());
+	}
+
 	bool ifsync = false;
 	if (tf_max - tf_min < 3600.0) ifsync = true;
 
@@ -447,7 +452,7 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 	std::vector<double> max_revisit_list;
 	max_reseetime(visible_timelist, max_revisit_list);
 	for (int i = 0; i < TargetNum; i++) {
-		if (i != TargetNum - 1) {
+		if (i != 20) {
 			if (max_revisit_list[i] < 6.0) {
 				visited[i]++;
 				std::cout << "目标" << i + 1 << "观测已完成" << std::endl;
@@ -472,9 +477,13 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 	{
 		time[i] = tnc.tnc_[i]->problem_.node_info_.back().time_acc_;
 
-		if (time[i] < time_min - 1.0e-3) {
+		if (time[i] < time_min - 1.0e-3 && time[i] <= 2.0 * 86400.0) {
 			time_min = time[i]; counter = i;
 		}
+	}
+
+	if (time_min > 2.0 * 86400.0) {
+		ifFinished_ = true;
 	}
 
 	for (int i = 0; i < TreeNum; i++) //按树扩展
