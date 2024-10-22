@@ -113,7 +113,7 @@ void ResultData::add_impulse(const std::vector<double> impulse_cartesian, const 
 	atkConnect(conID_, "Astrogator", sat_path + space + "InsertSegment MainSequence.SegmentList.- Maneuver");
 
 	// Set the commands
-	std::string set_impulseAxis = sat_path + space + "SetValue MainSequence.SegmentList.Maneuver" + manuv_id + ".ImpulsiveMnvr.ThrustAxes Satellite_J2000(Earth)";
+	std::string set_impulseAxis = sat_path + space + "SetValue MainSequence.SegmentList.Maneuver" + manuv_id + ".ImpulsiveMnvr.ThrustAxes Satellite J2000";
 	std::string set_impulseValueX = sat_path + space + "SetValue MainSequence.SegmentList.Maneuver" + manuv_id + ".ImpulsiveMnvr.Cartesian.X" + space + std::to_string(dvx) + space + "km/sec";
 	std::string set_impulseValueY = sat_path + space + "SetValue MainSequence.SegmentList.Maneuver" + manuv_id + ".ImpulsiveMnvr.Cartesian.Y" + space + std::to_string(dvy) + space + "km/sec";
 	std::string set_impulseValueZ = sat_path + space + "SetValue MainSequence.SegmentList.Maneuver" + manuv_id + ".ImpulsiveMnvr.Cartesian.Z" + space + std::to_string(dvz) + space + "km/sec";

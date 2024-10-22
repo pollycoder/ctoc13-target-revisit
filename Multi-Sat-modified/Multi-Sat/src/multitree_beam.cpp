@@ -362,8 +362,9 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 		temp.node_info_.push_back(temp_out);
 
 		//检测t0到tf时段内有没有其他能看到的目标
+		double t0_60s = t0 - fmod(t0, 60.0);
 		std::vector<std::vector<double>> results;
-		AccessPointObjects(rv0, t0, tf, 60.0, 21, results);
+		AccessPointObjects(rv0, t0_60s, tf, 60.0, 21, results);
 		for (int i = 0; i < TargetNum; i++) {
 			if (i == temp_out2.point_id_ - 1) continue;
 			for (int k = 0; k < results[i].size(); k++) {
@@ -429,24 +430,38 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 	if (tf_max - tf_min < 7200.0) ifsync = true;
 
 	// 如果有目标点的最大重访时间已经不可能满足要求，立即停止扩展
-	// 这一段应该先给8颗星的可能性都做一下验证，确认8颗星已扩展的时间相差不到2h为止
+	// 这一段应该先给8颗星的可能性都做一下验证，确认8颗星已扩展的时间相差不到1.5h为止
 	std::vector<double> max_revisit_gap;
 	max_revisit_interval_beforeEnd(max_revisit_gap, visible_timelist);
+	bool ifpossible = true;
 	int idx = 0;
 	for (auto iter = max_revisit_gap.begin(); iter != max_revisit_gap.end(); iter++) {
-		if (idx != 20) {
-			if (*iter > 21600.0 && ifsync) {
-				std::cout << "目标" << idx + 1 << "的最大重访时间已经达到" << *iter << "sec，该TNC停止扩展" << std::endl;
-				return;
+		idx++;
+		if (idx != TargetNum) {
+			if (*iter > 21600.0) {
+				std::cout << "目标" << idx << "的最大重访时间已经达到" << *iter << "sec" << std::endl;
+				if (ifsync) ifpossible = false;
 			}
+			else if (*iter == 0.0) {
+				std::cout << "目标" << idx << "还未被看到" << std::endl;
+				//if (ifsync) ifpossible = false;
+			}
+
+			
 		}
 		else {
 			if (*iter > 10800.0 && ifsync) {
-				//std::cout << "目标" << idx + 1 << "的最大重访时间已经达到" << *iter << "sec，该TNC停止扩展" << std::endl;
-				return;
+				std::cout << "目标" << idx << "的最大重访时间已经达到" << *iter << "sec" << std::endl;
+				if (ifsync) ifpossible = false;
+			}
+			else if (*iter == 0.0) {
+				std::cout << "目标" << idx << "还未被看到" << std::endl;
+				//if (ifsync) ifpossible = false;
 			}
 		}
 	}
+	std::cout << std::endl;
+	if (!ifpossible) return;
 
 	// 扩展完之后更新该时刻表的最大重访时间，如果重访时间满足要求则visited置1
 	std::vector<double> max_revisit_list;
@@ -477,7 +492,7 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 	{
 		time[i] = tnc.tnc_[i]->problem_.node_info_.back().time_acc_;
 
-		if (time[i] < time_min - 1.0e-3 && time[i] <= 2.0 * 86400.0) {
+		if (time[i] < time_min - 1.0e-3) {
 			time_min = time[i]; counter = i;
 		}
 	}
@@ -633,7 +648,7 @@ void MultiTree::RecordBestResult(std::vector<TNC>& expandinglist, std::ofstream&
 	
 	//按照格式输出最终结果
 	
-	//fout1 << std::endl << std::endl << "清理个数：" << result_now_.total_observed_num_ << "当且节点数量" << expandinglist.size() << "当前时间" << result_now_.time_cost_ << std::endl;
+	fout1 << std::endl << std::endl << "清理个数：" << result_now_.total_observed_num_ << "当且节点数量" << expandinglist.size() << "当前时间" << result_now_.time_cost_ << std::endl;
 	for (int id_sat = 0; id_sat < TreeNum; id_sat++)
 	{
 		for (int i = 0; i < result_now_.solution_[id_sat].node_info_.size(); i++)
