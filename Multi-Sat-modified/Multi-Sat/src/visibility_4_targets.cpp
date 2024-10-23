@@ -67,7 +67,7 @@ void AccessPointObjects(
     memcpy(rv_sat, rv0, 6 * sizeof(double));
 
     // 定义卫星的半视场角（例如 10 度，转换为弧度）
-    double half_cone_angle = 19.5 * D2R; //留一些余量
+    double half_cone_angle = 20.0 * D2R; //留一些余量
 
     // 传播卫星到时间 t
     double rv_sat_t[6];
@@ -105,6 +105,7 @@ void AccessPointObjects(
         t += dt;
 
         if (t > t_end) break;
+        if (t > 2.0 * 86400.0) break;
 
         // 传播卫星到时间 t
         int flag = propagate_j2(rv_sat_t, rv_sat_t, t - dt, t);
