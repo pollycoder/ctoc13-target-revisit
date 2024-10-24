@@ -363,8 +363,9 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 
 		//检测t0到tf时段内有没有其他能看到的目标
 		double t0_60s = t0 - fmod(t0, 60.0);
+		double tf_60s = tf + 60.0 - fmod(tf, 60.0);
 		std::vector<std::vector<double>> results;
-		AccessPointObjects(rv0, t0_60s, tf, 60.0, 21, results);
+		AccessPointObjects(rv0, t0_60s, tf_60s, 60.0, 21, results);
 		for (int i = 0; i < TargetNum; i++) {
 			if (i == temp_out2.point_id_ - 1) continue;
 			for (int k = 0; k < results[i].size(); k++) {
@@ -415,7 +416,7 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 
 		for (int k = 0; k < temp.node_info_.size(); k++)
 		{
-			if (temp.node_info_[k].action_ == 2)
+			if (temp.node_info_[k].action_ == 2 && fmod(temp.node_info_[k].time_acc_, 60.0) < 1e-4)
 				//visited[temp.node_info_[k].point_id_] ++;
 				visible_timelist[temp.node_info_[k].point_id_ - 1].push_back(temp.node_info_[k].time_acc_);
 		}
@@ -427,7 +428,7 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 	}
 
 	bool ifsync = false;
-	if (tf_max - tf_min < 7200.0) ifsync = true;
+	if (tf_max - tf_min < 3600.0) ifsync = true;
 
 	// 如果有目标点的最大重访时间已经不可能满足要求，立即停止扩展
 	// 这一段应该先给8颗星的可能性都做一下验证，确认8颗星已扩展的时间相差不到1.5h为止
@@ -437,28 +438,26 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 	int idx = 0;
 	for (auto iter = max_revisit_gap.begin(); iter != max_revisit_gap.end(); iter++) {
 		idx++;
-		if (idx != TargetNum) {
+		if (idx != TargetNum && ifsync) {
 			if (*iter > 21600.0) {
-				std::cout << "目标" << idx << "的最大重访时间已经达到" << *iter << "sec" << std::endl;
-				if (ifsync) ifpossible = false;
+				//std::cout << "目标" << idx << "的最大重访时间已经达到" << *iter << "sec" << std::endl;
+				//ifpossible = false;
 			}
 			else if (*iter == 0.0) {
-				std::cout << "目标" << idx << "还未被看到" << std::endl;
-				//if (ifsync) ifpossible = false;
+				//std::cout << "目标" << idx << "还未被看到" << std::endl;
 			}
 		}
 		else {
-			if (*iter > 10800.0) {
-				std::cout << "目标" << idx << "的最大重访时间已经达到" << *iter << "sec" << std::endl;
-				if (ifsync) ifpossible = false;
+			if (*iter > 10800.0 && ifsync) {
+				//std::cout << "目标" << idx << "的最大重访时间已经达到" << *iter << "sec" << std::endl;
+				//if (ifsync) ifpossible = false;
 			}
 			else if (*iter == 0.0) {
-				std::cout << "目标" << idx << "还未被看到" << std::endl;
-				//if (ifsync) ifpossible = false;
+				//std::cout << "目标" << idx << "还未被看到" << std::endl;
 			}
 		}
 	}
-	std::cout << std::endl;
+	//std::cout << std::endl;
 	if (!ifpossible) return;
 
 	// 扩展完之后更新该时刻表的最大重访时间，如果重访时间满足要求则visited置1

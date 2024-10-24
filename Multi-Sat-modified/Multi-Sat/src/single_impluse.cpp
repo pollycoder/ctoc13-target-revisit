@@ -233,8 +233,8 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 	lambda = lambda0;
 	phi = phi0;
 
-	Nmax = floor(double(Day) * 86400.0 / (2.0 * DPI * sqrt(a0 * a0 * a0 / mu_km_s)));//最多转移圈数
-	Nmin = floor((double(Day) - 1.0) * 86400.0 / (2.0 * DPI * sqrt(a0 * a0 * a0 / mu_km_s)));// +1;//最少转移圈数
+	Nmax = floor(43200.0 / (2.0 * DPI * sqrt(a0 * a0 * a0 / mu_km_s))) + 1;//最多转移圈数
+	Nmin = floor(0.0 / (2.0 * DPI * sqrt(a0 * a0 * a0 / mu_km_s)));// +1;//最少转移圈数
 
 	k1 = (1.0 - e0 * e0) / (2.0 * e0) / (e0 * cos(f00 - gamma00) + cos(gamma00)) * (sin(f00 - gamma00) + sin(f00) * cos(gamma00) / (1.0 + e0 * cos(f00)));
 	k2 = (1.0 - e0 * e0) / 2.0 * (cos(f00 - gamma00) + cos(E00) * cos(gamma00)) / (e0 * cos(f00 - gamma00) + cos(gamma00));
@@ -278,7 +278,7 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 					as = root[i] * root[i];
 				}
 			}
-			if (as < Re_km || as > Re_km + 1500.0)continue;
+			if (as < Re_km + 200.0 || as > Re_km + 1000.0)continue;
 
 			//线性J2模型相关
 			C_J2 = 1.5 * J2 * Re_km * Re_km * sqrt(mu_km_s) * pow(as, -3.5);
@@ -716,7 +716,7 @@ void single_imp(double* dv, double* RVf, int& flag, const double* RV0, const dou
 //		保证目标可见
 //		轨道高度200-1000km
 void perturbation(double* dv, double& tf, const std::vector<double>& X) {
-	tf += (X[3] - 0.5) * 43200.0;								
+	tf += (X[3] - 0.5) * 1.0e4;								
 	dv[0] += (X[0] - 0.5) * 1.0e3;
 	dv[1] += (X[1] - 0.5) * 1.0e3;
 	dv[2] += (X[2] - 0.5) * 1.0e3;
@@ -752,8 +752,10 @@ double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad
 	// 用二体近似，为了给J2留出余量，设置20km的冗余
 	double peri = a * (1 - e) - Re_km;
 	double apo = a * (1 + e) - Re_km;
-	if(peri < 220.0 || apo > 980.0) {
-		//std::cout << "高度不符合要求, h = " << h << " km" << std::endl;
+	if(peri < 221.0 || apo > 980.0) {
+		/*std::cout << "高度不符合要求" << " ";
+		std::cout << "peri = " << peri << " km ";
+		std::cout << "apo = " << peri << " km" << std::endl;*/
 		//std::cout << std::endl;
 		return penalty; 
 	}
@@ -789,7 +791,7 @@ void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& 
 	//}
 
 	//tf = results[target_id][0];
-	
+
 
 	//double rv0[6], rvf[6], coef[6];
 	//memcpy(rv0, RV0, 6 * sizeof(double));
@@ -805,9 +807,16 @@ void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& 
 
 	double m0 = 1000.0, mf;
 	int NR;
+
+	double rv0[6], rv1[6];
+	memcpy(rv0, RV0, 6 * sizeof(double));
+	propagate_j2(rv0, rv1, t0, tf);
+	double r1[3] = { rv1[0], rv1[1], rv1[2] };
+	double h0 = V_Norm2(r1, 3) - Re_km;
+
 	
 	//J2Lambert的方法
-	//single_imp(dv, RVf, flag, RV0, t0, tf, lambda, phi, h);
+	//single_imp(dv, RVf, flag, RV0, t0, tf, lambda, phi, h0);
 
 	//注意张刚论文的方法里，tf是飞行时长，不是时刻
 	single_imp(m0, t0, RV0, lambda, phi, 1, flag, mf, tf, dv, NR);
@@ -826,7 +835,7 @@ void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& 
 
 	double impulse = 0.0;
 	std::vector<double> X = { 0.5, 0.5, 0.5, 0.5 };
-	nlopt_main(obj_func_shooting, f_data, X, impulse, X.size(), 0, 10000);		//不输出
+	nlopt_main(obj_func_shooting, f_data, X, impulse, X.size(), 0, 100);		//不输出
 
 	perturbation(dv, tf, X);
 
