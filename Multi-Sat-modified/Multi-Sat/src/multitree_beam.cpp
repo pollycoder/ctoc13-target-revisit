@@ -665,7 +665,8 @@ void MultiTree::RecordBestResult(std::vector<TNC>& expandinglist, std::ofstream&
 				fout1 << std::endl;
 			}
 			else {
-				//fout1 << std::fixed << std::setprecision(16) << result_now_.solution_[id_sat].node_info_[i].point_id_ << std::endl;
+				fout1 << std::fixed << std::setprecision(16) << result_now_.solution_[id_sat].node_info_[i].time_acc_ << " ";
+				fout1 << std::fixed << std::setprecision(16) << result_now_.solution_[id_sat].node_info_[i].point_id_ << std::endl;
 			}
 		}
 	}
