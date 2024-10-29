@@ -66,7 +66,7 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 //		dv[3]:		脉冲速度增量，km/s
 //		NR:			转移圈数
 void single_imp(const double m0, const double t0, const double* rv0, const double lambda0, const double phi0, const int Day,
-	int& flag0, double& mf, double& tf, double* dv, int& NR);
+	int& flag0, double& mf, double& tf, double* dv, const int& NR, const int& branch);
 
 
 //CTOC13：单脉冲机动(指定天数的最小脉冲解)
@@ -127,19 +127,6 @@ void get_score_data(const std::vector<double>& X, const double* para, double* dv
 void shooting_target2target(const double t0, const double* rv0, const double time_stamp, const double lambda0, const double phi0, double& tf, double* dv, double* rv, const int& branch);
 
 
-//CTOC13：获取用来搜索的最佳初始轨道根数
-//计算无机动情况下，时刻表上所有点平均经纬度误差最小的初始轨道根数
-//输入：
-//		gap_list[2][26]：时刻表
-//	    X：优化变量
-//输出：
-//		coe0[6]：最优初始轨道根数
-//		average_err：平均经纬度误差（指标）
-void optpara_2_real_mission(const std::vector<double>& X, const int sat_num, std::vector<std::vector<double>>& coe_chief);
-double obj_func_initial_coe(const std::vector<double>& X, std::vector<double>& grad, void* f_data);
-void get_initial_coe(const std::vector<double>& X, double* coe0, double& average_err);
-
-
 //CTOC13：利用J2Lambert问题，进行单次脉冲修正
 //TODO：需要改成输入轨道高度的情况，以便Lambert优化器优化高度和实际覆盖的目标点
 //与张刚论文作用类似，但是脉冲并不是近似切向，在一个轨道高度范围内近似选择脉冲最低且能观测到地面目标的
@@ -174,6 +161,6 @@ void single_imp(double* dv, double* RVf, int& flag, const double* RV0, const dou
 //格式与PSO对应的Obj_func完全一致，我们只需要获取最终的优化变量X
 //不同于之前每次都要先写get_value再包装，这是为了childnode函数看起来思路更清晰
 double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad, void* f_data);
-void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& t0, const double* RV0, const int& target_id);
+void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& t0, const double* RV0, const int& target_id, const int& NR, const int branch);
 
 #endif // !SINGLE_IMPLUSE_H

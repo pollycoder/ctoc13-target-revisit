@@ -57,12 +57,13 @@ void MultiTree::unique_remove(std::vector<TNC>& expandinglist)
 	std::vector<TNC> new_expandinglist;
 	new_expandinglist.reserve(W_);
 
-	for (int i = 0; i<expandinglist.size()-1; i++) //每次删除后大小都会变
+	for (int i = 0; i<expandinglist.size(); i++) //每次删除后大小都会变
 	{
-		if ( !EqualTNC(expandinglist[i],expandinglist[i+1])) //相等
-		{
-			new_expandinglist.push_back(std::move(expandinglist[i]));
-		}
+		//if ( !EqualTNC(expandinglist[i],expandinglist[i+1])) //相等
+		//{
+		//	new_expandinglist.push_back(std::move(expandinglist[i]));
+		//}
+		new_expandinglist.push_back(std::move(expandinglist[i]));
 		if (new_expandinglist.size() >= W_) break;
 	}
 
@@ -79,7 +80,7 @@ void MultiTree::beam_discard(std::vector<TNC>& expandinglist)
 	//按照h从大到小排序
 	sort(expandinglist.begin(), expandinglist.end(), MultiTree::SortTNC);
 
-	//unique_remove(expandinglist);
+	unique_remove(expandinglist);
 
 }
 
@@ -317,73 +318,61 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 {
 	for (int j = 0; j < TargetNum; j++)
 	{
-		if (visited[j] > 0)
-		{
-			continue;
+		for (int bra = 0; bra < 2; bra++) {
+			for (int NR = 0; NR < 20; NR++) {
+				if (visited[j] > 0)
+				{
+					continue;
+				}
+				double t0, h0, rv0[6], coe0[6], lambda0, phi0, tf, dv[3], a, e, hmin, hmax;
+				int flag;
+
+				memcpy(rv0, node->problem_.node_info_.back().rv_acc_, 6 * sizeof(double));
+				t0 = node->problem_.node_info_.back().time_acc_;
+				tf = t0 + 10800.0;						//从3h开始扰动，瞎给的，用的是张刚论文的方法给初值，tf除了ship随便取
+
+				rv2coe(flag, coe0, rv0, mu_km_s);
+				a = coe0[0]; e = coe0[1];
+				hmin = a * (1 - e) - Re_km;
+				hmax = a * (1 + e) - Re_km;
+				if (hmin < 220.0 || hmax > 980.0) continue;
+
+				double rvf[6];
+
+				// 打靶到下一个目标，适配visit_gap
+				obs_shooting(flag, dv, tf, rvf, t0, rv0, j, NR, bra);
+				if (tf > 2.0 * 86400.0) continue;
+
+				double rv1[6], rv2[6];
+				memcpy(rv1, rv0, 6 * sizeof(double));
+				for (int i = 0; i < 3; i++) rv1[i + 3] += dv[i];
+
+
+				//TODO: 将结果输出
+				Node_problem temp;
+				OutputResult temp_out, temp_out2, temp_out3; //机动的信息，机动后的信息
+
+				temp_out.action_ = 1;
+				for (int i = 0; i < 3; i++)  rv0[3 + i] += dv[i];
+				memcpy(temp_out.rv_acc_, rv0, 6 * sizeof(double));
+				memcpy(temp_out.dv_, dv, 3 * sizeof(double));
+				temp_out.time_acc_ = t0;
+				temp_out.point_id_ = 0;
+
+				temp_out2.action_ = 2;
+				temp_out2.time_acc_ = tf;
+				memcpy(temp_out2.rv_acc_, rvf, 6 * sizeof(double));
+				for (int i = 0; i < 3; i++) temp_out2.dv_[i] = 0.0;
+				temp_out2.point_id_ = j + 1;
+
+				temp.node_info_.push_back(temp_out);
+
+				//最后一个放tf的子节点
+				temp.node_info_.push_back(temp_out2);
+
+				child_node_problems.push_back(temp);
+			}
 		}
-		double t0, h0, rv0[6], coe0[6], lambda0, phi0, tf, dv[3], a, e, hmin, hmax;
-		int flag;
-
-		memcpy(rv0, node->problem_.node_info_.back().rv_acc_, 6 * sizeof(double));
-		t0 = node->problem_.node_info_.back().time_acc_;
-		tf = t0 + 10800.0;						//从3h开始扰动，瞎给的，用的是张刚论文的方法给初值，tf除了ship随便取
-		
-		rv2coe(flag, coe0, rv0, mu_km_s);
-		a = coe0[0]; e = coe0[1];
-		hmin = a * (1 - e) - Re_km;
-		hmax = a * (1 + e) - Re_km;
-		if (hmin < 220.0 || hmax > 980.0) continue;
-		
-		double rvf[6];
-
-		// 打靶到下一个目标，适配visit_gap
-		obs_shooting(flag, dv, tf, rvf, t0, rv0, j);
-
-		double rv1[6], rv2[6];
-		memcpy(rv1, rv0, 6 * sizeof(double));
-		for (int i = 0; i < 3; i++) rv1[i + 3] += dv[i];
-
-
-		//TODO: 将结果输出
-		Node_problem temp;
-		OutputResult temp_out, temp_out2, temp_out3; //机动的信息，机动后的信息
-
-		temp_out.action_ = 1;
-		for (int i = 0; i < 3; i++)  rv0[3 + i] += dv[i];
-		memcpy(temp_out.rv_acc_, rv0, 6 * sizeof(double));
-		memcpy(temp_out.dv_, dv, 3 * sizeof(double));
-		temp_out.time_acc_ = t0;
-		temp_out.point_id_ = 0;
-
-		temp_out2.action_ = 2;
-		temp_out2.time_acc_ = tf;
-		memcpy(temp_out2.rv_acc_, rvf, 6 * sizeof(double));
-		for (int i = 0; i < 3; i++) temp_out2.dv_[i] = 0.0;
-		temp_out2.point_id_ = j + 1;
-
-		temp.node_info_.push_back(temp_out);
-
-		////检测t0到tf时段内有没有其他能看到的目标
-		//double t0_60s = t0 - fmod(t0, 60.0);
-		//double tf_60s = tf + 60.0 - fmod(tf, 60.0);
-		//std::vector<std::vector<double>> results;
-		//AccessPointObjects(rv0, t0_60s, tf_60s, 60.0, 21, results);
-		//for (int i = 0; i < TargetNum; i++) {
-		//	if (i == temp_out2.point_id_ - 1) continue;
-		//	for (int k = 0; k < results[i].size(); k++) {
-		//		temp_out3.action_ = 2;
-		//		temp_out3.time_acc_ = results[i][k];
-		//		memcpy(temp_out3.rv_acc_, rvf, 6 * sizeof(double));
-		//		for (int m = 0; m < 3; m++) temp_out2.dv_[m] = 0.0;
-		//		temp_out3.point_id_ = i + 1;
-		//		temp.node_info_.push_back(temp_out3);
-		//	}
-		//}
-
-		//最后一个放tf的子节点
-		temp.node_info_.push_back(temp_out2);
-
-		child_node_problems.push_back(temp);
 	}
 }
 
@@ -418,7 +407,7 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 
 		for (int k = 0; k < temp.node_info_.size(); k++)
 		{
-			if (temp.node_info_[k].action_ == 2 && fmod(temp.node_info_[k].time_acc_, 60.0) < 1e-4)
+			if (temp.node_info_[k].action_ == 2)// && fmod(temp.node_info_[k].time_acc_, 60.0) < 1e-4)
 				//visited[temp.node_info_[k].point_id_] ++;
 				visible_timelist[temp.node_info_[k].point_id_ - 1].push_back(temp.node_info_[k].time_acc_);
 		}
@@ -485,18 +474,19 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 		if (visited[i] == 0) ifdone = false;
 	}
 	ifFinished_ = ifdone;
+	if(ifdone) std::cout << "观测任务已经全部完成" << std::endl;
 
 	double time[TreeNum]; double time_min = 1.e20; int counter = 0; //扩展时间最小的那颗树
 	for (int i = 0; i < TreeNum; i++)
 	{
 		time[i] = tnc.tnc_[i]->problem_.node_info_.back().time_acc_;
 
-		if (time[i] < time_min - 1.0e-3) {
+		if (time[i] < time_min - 1.0e-3 && time[i] < 2.0 * 86400.0) {
 			time_min = time[i]; counter = i;
 		}
 	}
 
-	if (time_min > 2.0 * 86400.0) {
+	if (time_min > 2.0 * 86400.0 - 3600.0) {
 		ifFinished_ = true;
 	}
 
@@ -601,6 +591,7 @@ void MultiTree::Run()
 
 		if (ifFinished_)
 		{
+			//std::cout << "观测任务已经全部完成" << std::endl;
 			std::vector<TNC> x;
 			RecordBestResult(x, fout0);			         //记录最好信息
 		}
@@ -667,10 +658,8 @@ void MultiTree::RecordBestResult(std::vector<TNC>& expandinglist, std::ofstream&
 				fout1 << std::endl;
 			}
 			else {
-				/*if (fmod(result_now_.solution_[id_sat].node_info_[i].time_acc_, 60.0) < 1e-7) {
-					std::cout << std::fixed << std::setprecision(16) << result_now_.solution_[id_sat].node_info_[i].time_acc_ << " ";
-					std::cout << std::fixed << std::setprecision(16) << result_now_.solution_[id_sat].node_info_[i].point_id_ << std::endl;
-				}*/
+				fout1 << std::fixed << std::setprecision(16) << result_now_.solution_[id_sat].node_info_[i].time_acc_ << " ";
+				fout1 << std::fixed << std::setprecision(16) << result_now_.solution_[id_sat].node_info_[i].point_id_ << std::endl;
 			}
 		}
 	}
