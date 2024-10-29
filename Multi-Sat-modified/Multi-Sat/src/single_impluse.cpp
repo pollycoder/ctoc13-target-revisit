@@ -783,7 +783,7 @@ double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad
 	//propagate_j2(RV1, RVf, t0, tf, 1e-10);
 	double target_R[3];
 	get_target_R(id, tf, target_R);
-	bool ifVisible = is_target_visible(RVf, target_R, 20.0 * D2R);
+	bool ifVisible = is_target_visible(RVf, target_R, 19.5 * D2R);
 	if(!ifVisible) { 
 		//std::cout << "打靶后目标不可见" << std::endl;
 		//std::cout << std::endl;
@@ -822,7 +822,7 @@ void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& 
 
 	double impulse = 0.0;
 	std::vector<double> X = { 0.5, 0.5, 0.5, 0.5 };
-	nlopt_main(obj_func_shooting, f_data, X, impulse, X.size(), 0, 1000);		//不输出
+	nlopt_main(obj_func_shooting, f_data, X, impulse, X.size(), 0, 5000);		//不输出
 
 	perturbation(dv, tf, X);
 
