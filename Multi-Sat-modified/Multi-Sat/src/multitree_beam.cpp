@@ -22,15 +22,15 @@ bool sort_by_out(const OutputResult& a, const OutputResult& b)
 
 /****************************************************************************
 * 函数名   : SortNode(int a,int b)
-* 功  能   : 排序函数：根据起始节点编号进行h指标从大到小排序
+* 功  能   : 排序函数：根据起始节点编号进行total_impulse指标从小到大排序
 * 输 入    : 1.节点编号 2.节点编号
 ****************************************************************************/
 inline bool MultiTree::SortTNC(const TNC& a, const TNC& b)
 {
-	double h_a, h_b;
+	/*double h_a, h_b;
 	h_a = 1.0 / pow(a.op_index_.time_cost, 1);
-	h_b = 1.0 / pow(b.op_index_.time_cost, 1);
-	return  h_a > h_b;
+	h_b = 1.0 / pow(b.op_index_.time_cost, 1);*/
+	return  a.op_index_.total_impulse_ < b.op_index_.total_impulse_;
 }
 
 /****************************************************************************
@@ -311,6 +311,8 @@ std::vector<Node*> Tree::ExpandNode(Node* node, const int* visited, const std::v
 * 输 入    : const TNC& tnc 原TNC
 * 输    出 : std::vector<TNC>& newTNCs  新扩展的tncs
 ****************************************************************************/
+
+// TODO: 去掉AccessPointObjects的调用，改成逐一打靶
 inline  void children_nodes(Node* node, const int* visited, std::vector<Node_problem>& child_node_problems)
 {
 	for (int j = 0; j < TargetNum; j++)
@@ -361,22 +363,22 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 
 		temp.node_info_.push_back(temp_out);
 
-		//检测t0到tf时段内有没有其他能看到的目标
-		double t0_60s = t0 - fmod(t0, 60.0);
-		double tf_60s = tf + 60.0 - fmod(tf, 60.0);
-		std::vector<std::vector<double>> results;
-		AccessPointObjects(rv0, t0_60s, tf_60s, 60.0, 21, results);
-		for (int i = 0; i < TargetNum; i++) {
-			if (i == temp_out2.point_id_ - 1) continue;
-			for (int k = 0; k < results[i].size(); k++) {
-				temp_out3.action_ = 2;
-				temp_out3.time_acc_ = results[i][k];
-				memcpy(temp_out3.rv_acc_, rvf, 6 * sizeof(double));
-				for (int m = 0; m < 3; m++) temp_out2.dv_[m] = 0.0;
-				temp_out3.point_id_ = i + 1;
-				temp.node_info_.push_back(temp_out3);
-			}
-		}
+		////检测t0到tf时段内有没有其他能看到的目标
+		//double t0_60s = t0 - fmod(t0, 60.0);
+		//double tf_60s = tf + 60.0 - fmod(tf, 60.0);
+		//std::vector<std::vector<double>> results;
+		//AccessPointObjects(rv0, t0_60s, tf_60s, 60.0, 21, results);
+		//for (int i = 0; i < TargetNum; i++) {
+		//	if (i == temp_out2.point_id_ - 1) continue;
+		//	for (int k = 0; k < results[i].size(); k++) {
+		//		temp_out3.action_ = 2;
+		//		temp_out3.time_acc_ = results[i][k];
+		//		memcpy(temp_out3.rv_acc_, rvf, 6 * sizeof(double));
+		//		for (int m = 0; m < 3; m++) temp_out2.dv_[m] = 0.0;
+		//		temp_out3.point_id_ = i + 1;
+		//		temp.node_info_.push_back(temp_out3);
+		//	}
+		//}
 
 		//最后一个放tf的子节点
 		temp.node_info_.push_back(temp_out2);
@@ -665,8 +667,10 @@ void MultiTree::RecordBestResult(std::vector<TNC>& expandinglist, std::ofstream&
 				fout1 << std::endl;
 			}
 			else {
-				fout1 << std::fixed << std::setprecision(16) << result_now_.solution_[id_sat].node_info_[i].time_acc_ << " ";
-				fout1 << std::fixed << std::setprecision(16) << result_now_.solution_[id_sat].node_info_[i].point_id_ << std::endl;
+				/*if (fmod(result_now_.solution_[id_sat].node_info_[i].time_acc_, 60.0) < 1e-7) {
+					std::cout << std::fixed << std::setprecision(16) << result_now_.solution_[id_sat].node_info_[i].time_acc_ << " ";
+					std::cout << std::fixed << std::setprecision(16) << result_now_.solution_[id_sat].node_info_[i].point_id_ << std::endl;
+				}*/
 			}
 		}
 	}

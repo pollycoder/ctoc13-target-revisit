@@ -182,6 +182,7 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 
 
 //单脉冲机动(指定天数的最小脉冲解)
+//TODO：去掉里面branch和NR的遍历，也不要求脉冲排序，求解成功即可扩展
 //输入：
 //		m0:			初始质量，kg
 //		t0:			初始（脉冲）时刻，s
@@ -701,6 +702,7 @@ void single_imp(double* dv, double* RVf, int& flag, const double* RV0, const dou
 }
 
 //CTOC13：利用J2Lambert，优化覆盖目标点的轨道高度
+//TODO: 修改优化时的propagate，使用J2线性模型
 //优化变量（被摄动项）：
 //		dv[3]：脉冲，每个分量扰动量30m/s
 //		tf：实际的终末时刻，从6h开始扰动，区间为[0,12h]
@@ -760,10 +762,10 @@ double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad
 		return penalty; 
 	}
 	
-	propagate_j2(RV1, RVf, t0, tf);
+	propagate_j2(RV1, RVf, t0, tf, 1e-5);
 	double target_R[3];
 	get_target_R(id, tf, target_R);
-	bool ifVisible = is_target_visible(RVf, target_R, 20.0 * D2R);
+	bool ifVisible = is_target_visible(RVf, target_R, 19.5 * D2R);
 	if(!ifVisible) { 
 		//std::cout << "打靶后目标不可见" << std::endl;
 		//std::cout << std::endl;
@@ -776,6 +778,7 @@ double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad
 }
 
 // 利用h0给dv的初值，默认高度与初始高度一致，扰动之后的值与h0无关
+// TODO：优化之后，用高精度propagate再积一次分
 void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& t0, const double* RV0, const int& target_id) {
 	//std::vector<std::vector<double>> results;
 	//AccessPointObjects(RV0, t0, 2.0 * 86400.0, 60.0, TargetNum, results);
