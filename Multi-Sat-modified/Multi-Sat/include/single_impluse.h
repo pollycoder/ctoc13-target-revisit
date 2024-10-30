@@ -161,6 +161,6 @@ void single_imp(double* dv, double* RVf, int& flag, const double* RV0, const dou
 //格式与PSO对应的Obj_func完全一致，我们只需要获取最终的优化变量X
 //不同于之前每次都要先写get_value再包装，这是为了childnode函数看起来思路更清晰
 double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad, void* f_data);
-void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& t0, const double* RV0, const int& target_id, const int& NR, const int branch);
+void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& t0, const double* RV0, const int& target_id, const int& NR, const int& branch);
 
 #endif // !SINGLE_IMPLUSE_H

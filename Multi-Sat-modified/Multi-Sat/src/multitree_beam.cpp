@@ -335,7 +335,7 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 				a = coe0[0]; e = coe0[1];
 				hmin = a * (1 - e) - Re_km;
 				hmax = a * (1 + e) - Re_km;
-				if (hmin < 220.0 || hmax > 980.0) continue;
+				if (hmin < 201.0 || hmax > 999.0) continue;
 
 				double rvf[6];
 
@@ -366,6 +366,23 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 				temp_out2.point_id_ = j + 1;
 
 				temp.node_info_.push_back(temp_out);
+
+				//检测t0到tf时段内有没有其他能看到的目标
+				double t0_60s = t0 - fmod(t0, 60.0);
+				double tf_60s = tf + 60.0 - fmod(tf, 60.0);
+				std::vector<std::vector<double>> results;
+				AccessPointObjects(rv0, t0_60s, tf_60s, 60.0, 21, results);
+				for (int i = 0; i < TargetNum; i++) {
+					if (i == temp_out2.point_id_ - 1) continue;
+					for (int k = 0; k < results[i].size(); k++) {
+						temp_out3.action_ = 2;
+						temp_out3.time_acc_ = results[i][k];
+						memcpy(temp_out3.rv_acc_, rvf, 6 * sizeof(double));
+						for (int m = 0; m < 3; m++) temp_out2.dv_[m] = 0.0;
+						temp_out3.point_id_ = i + 1;
+						temp.node_info_.push_back(temp_out3);
+					}
+				}
 
 				//最后一个放tf的子节点
 				temp.node_info_.push_back(temp_out2);

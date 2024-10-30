@@ -213,11 +213,7 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 
 	flag0 = 0;
 
-	//rv2coe(flag, ocoe0, rv0, mu_km_s);//输入参数转化成轨道根数
-	//ocoe0[0] *= 1000.0;
-	//O2M(ocoe0, coe0, J2);
-	//coe0[0] /= 1000.0;
-	rv2coe(flag, coe0, rv0, mu_km_s);//输入参数转化成轨道根数
+	rv2coe(flag0, coe0, rv0, mu_km_s);//输入参数转化成轨道根数
 
 	a0 = coe0[0];
 	e0 = coe0[1];
@@ -233,9 +229,6 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 	//phi = phi0 * D2R;
 	lambda = lambda0;
 	phi = phi0;
-
-	//Nmax = floor(43200.0 / (2.0 * DPI * sqrt(a0 * a0 * a0 / mu_km_s))) + 1;//最多转移圈数
-	//Nmin = floor(0.0 / (2.0 * DPI * sqrt(a0 * a0 * a0 / mu_km_s)));// +1;//最少转移圈数
 
 	k1 = (1.0 - e0 * e0) / (2.0 * e0) / (e0 * cos(f00 - gamma00) + cos(gamma00)) * (sin(f00 - gamma00) + sin(f00) * cos(gamma00) / (1.0 + e0 * cos(f00)));
 	k2 = (1.0 - e0 * e0) / 2.0 * (cos(f00 - gamma00) + cos(E00) * cos(gamma00)) / (e0 * cos(f00 - gamma00) + cos(gamma00));
@@ -253,6 +246,10 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 		int bra = branch;
 		NRi = NR;
 		{
+			if (phi > inc0) {
+				flag0 = 0;
+				return;
+			}
 			omega_ft = (bra == 0) ? asin(sin(phi) / sin(inc0)) : -asin(sin(phi) / sin(inc0)) + DPI;//代表omega+ft，是最终轨道的参数，但是轨道面没变
 
 			c1 = -1 / sqrt(1 - sin(phi) * sin(phi)) * (cos(omega_ft) * sin(lambda) - sin(omega_ft) * cos(inc0) * cos(lambda));
@@ -273,7 +270,7 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 			as = 0.0;
 			delta_a = 1.0e10;
 			if (root_num < 1) {
-				flag = 0;
+				flag0 = 0;
 				return;
 			}
 			for (int i = 0; i < root_num; i++)
@@ -284,10 +281,12 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 					as = root[i] * root[i];
 				}
 			}
-			if (as < Re_km + 200.0 || as > Re_km + 1000.0) {
-				flag = 0;
+
+			if (as < Re_km) {
+				flag0 = 0;
 				return;
 			}
+			
 
 			//线性J2模型相关
 			C_J2 = 1.5 * J2 * Re_km * Re_km * sqrt(mu_km_s) * pow(as, -3.5);
@@ -312,22 +311,21 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 					am = root[i] * root[i];
 				}
 			}
-			if (am < Re_km + 200.0) {
-				flag = 0;
-				return;
-			}
-
+			
 			//此时am已求出，且i,Omega不变，需计算其他平轨道根数（近似解）
 			em = e0 + k2 * (am / a0 - 1.0);
 			omegam = omega0 + k1 * (am / a0 - 1.0);
 			M0m = M00 - k3 * (am / a0 - 1.0);
-			//if (em < 0.0 || em > 1.0)continue;
-			if (am * (1.0 - em) < Re_km + 200.0) {
-				flag = 0;
+			if (em < 0.0 || em > 1.0) {
+				flag0 = 0;
 				return;
 			}
-			if (am * (1.0 + em) > Re_km + 1000.0) {
-				flag = 0;
+			if (am  < Re_km) {
+				flag0 = 0;
+				return;
+			}
+			if (am > Re_km + 1000.0) {
+				flag0 = 0;
 				return;
 			}
 
@@ -345,19 +343,7 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 			dv_mod = sqrt(mu_km_s * (2.0 * (1.0 + e0 * cos(f00)) / p0 - 1.0 / (ocoe[0] / 1000.0))) - sqrt(mu_km_s / p0 * (1.0 + e0 * e0 + 2.0 * e0 * cos(f00)));
 			dv_min = dv_mod;
 
-			//if ((double)sign * dv_mod < 0.0)continue;//新增脉冲方向的选择
-
-			//if (fabs(dv_min) > fabs(dv_mod))
-			//{
-			//	dv_min = dv_mod;
-
-			//	//C_J2 = 1.5 * J2 * Re_km * Re_km * sqrt(mu_km_s) * pow(am, -3.5);
-			//	//Omega_J2_ = -C_J2 * cos(inc0) / (1.0 - em * em) / (1.0 - em * em);
-			//	//tG_J2 = (alphaGt - alphaG0_ + 2.0 * DPI * (double(Day) - 1.0)) / (omegaE - Omega_J2_);//精确的J2飞行时间
 			tmin = tG_J2;
-			//	NR = NRi;
-			//	//branch = bra;
-			//}
 		}
 	}
 
@@ -368,12 +354,7 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 	tf = tmin;
 	mf = m0 * exp(-fabs(dv_min * 1000.0) / g0 / Isp);
 
-	//if (mf < 300.0)
-	//	flag0 = 0;
-	//else
-	//	flag0 = 1;
-	if (V_Norm2(dv, 3) > 0.1) flag0 = 0;
-	else flag0 = 1;
+	flag0 = 1;
 }
 
 
@@ -690,7 +671,7 @@ void single_imp(double* dv, double* RVf, int& flag, const double* RV0, const dou
 	for (int i = 0; i < 3; i++) RVf_temp[i] = Rf_temp[i];
 	J2Lambert_short(flag_temp, RV1_temp, RVf_temp, RV0, tf - t0, mu_km_s);
 
-	bool ifvisible = is_target_visible(RVf_temp, R_Target, 20.0 * D2R);
+	bool ifvisible = is_target_visible(RVf_temp, R_Target, 19.5 * D2R);
 	if (!ifvisible) flag_temp = 0;
 
 	//如果不成功则惩罚
@@ -736,10 +717,10 @@ void single_imp(double* dv, double* RVf, int& flag, const double* RV0, const dou
 //		保证目标可见
 //		轨道高度200-1000km
 void perturbation(double* dv, double& tf, const std::vector<double>& X) {
-	tf += (X[3] - 0.5) * 1.0e4;								
-	dv[0] += (X[0] - 0.5) * 1.0e3;
-	dv[1] += (X[1] - 0.5) * 1.0e3;
-	dv[2] += (X[2] - 0.5) * 1.0e3;
+	tf += (X[3] - 0.5) * 4000.;								
+	dv[0] += (X[0] - 0.5) * 1.0;
+	dv[1] += (X[1] - 0.5) * 1.0;
+	dv[2] += (X[2] - 0.5) * 1.0;
 }
 
 double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad, void* f_data) {
@@ -771,7 +752,7 @@ double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad
 	// 用二体近似，为了给J2留出余量，设置20km的冗余
 	double peri = a * (1 - e) - Re_km;
 	double apo = a * (1 + e) - Re_km;
-	if(peri < 220.0 || apo > 980.0) {
+	if(peri < 200.0 || apo > 1000.0) {
 		/*std::cout << "高度不符合要求" << " ";
 		std::cout << "peri = " << peri << " km ";
 		std::cout << "apo = " << peri << " km" << std::endl;*/
@@ -780,24 +761,27 @@ double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad
 	}
 	
 	propagate_j2linear (RV1, RVf, t0, tf);
-	//propagate_j2(RV1, RVf, t0, tf, 1e-10);
+	//propagate_j2(RV1, RVf, t0, tf, 1e-6);
 	double target_R[3];
 	get_target_R(id, tf, target_R);
 	bool ifVisible = is_target_visible(RVf, target_R, 19.5 * D2R);
 	if(!ifVisible) { 
-		//std::cout << "打靶后目标不可见" << std::endl;
-		//std::cout << std::endl;
-		return penalty; 
+		double Rf[3] = { RVf[0], RVf[1], RVf[2] };
+		double Rf_norm = V_Norm2(Rf, 3);
+		double Rf_fixed[3];
+		V_Multi(Rf_fixed, Rf, Re_km / Rf_norm, 3);
+		double dR[3];
+		V_Minus(dR, Rf_fixed, target_R, 3);
+		return V_Norm2(dR, 3) / Re_km;
 	}
 
 	double impulse = V_Norm2(dv, 3);
-	
 	return impulse;
 }
 
 // 利用h0给dv的初值，默认高度与初始高度一致，扰动之后的值与h0无关
 // TODO：优化之后，用高精度propagate再积一次分
-void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& t0, const double* RV0, const int& target_id, const int& NR, const int branch) {
+void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& t0, const double* RV0, const int& target_id, const int& NR, const int& branch) {
 	double target_geo[2];
 	get_target_geogetic(target_id, tf, target_geo);
 	double lambda = target_geo[1];
@@ -833,7 +817,7 @@ void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& 
 
 	double target_R[3];
 	get_target_R(target_id, tf, target_R);
-	bool ifVisible = is_target_visible(RVf, target_R, 19.0 * D2R);
+	bool ifVisible = is_target_visible(RVf, target_R, 19.5 * D2R);
 
 	if (!ifVisible) {
 		for (int j = 0; j < 3; j++) {
