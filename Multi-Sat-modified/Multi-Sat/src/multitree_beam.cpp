@@ -7,8 +7,9 @@
 bool sort_by_out(const OutputResult& a, const OutputResult& b)
 {
 	bool result = false;
-	if (fabs(a.time_acc_ - b.time_acc_) < 10e-5)
+	if (fabs(a.time_acc_ - b.time_acc_) < 1.0e-5)
 	{
+		if (a.action_ == 1 && b.action_ == 2) return false;
 		return a.action_ < b.action_;
 	}
 
@@ -30,7 +31,10 @@ inline bool MultiTree::SortTNC(const TNC& a, const TNC& b)
 	/*double h_a, h_b;
 	h_a = 1.0 / pow(a.op_index_.time_cost, 1);
 	h_b = 1.0 / pow(b.op_index_.time_cost, 1);*/
-	return  a.op_index_.total_impulse_ < b.op_index_.total_impulse_;
+	if (a.op_index_.observed_num_ < b.op_index_.observed_num_) return true;
+	else if (a.op_index_.observed_num_ == b.op_index_.observed_num_) return a.op_index_.total_impulse_ < b.op_index_.observed_num_;
+	
+	return false;
 }
 
 /****************************************************************************
@@ -39,11 +43,12 @@ inline bool MultiTree::SortTNC(const TNC& a, const TNC& b)
 ****************************************************************************/
 inline bool MultiTree::EqualTNC(const TNC& a, const TNC& b)
 {
-	//if (fabs(a.op_index_.total_mass_ - b.op_index_.total_mass_) < 1.0e-10)
-	//{
-	//	//得到两个序列
-	//	return true;
-	//}
+	if ((fabs(a.op_index_.total_impulse_ - b.op_index_.total_impulse_) < 1.0e-10 )
+			 && (a.op_index_.observed_num_ == b.op_index_.observed_num_))
+	{
+		//得到两个序列
+		return true;
+	}
 	
 	return  false;
 }
@@ -57,7 +62,7 @@ void MultiTree::unique_remove(std::vector<TNC>& expandinglist)
 	std::vector<TNC> new_expandinglist;
 	new_expandinglist.reserve(W_);
 
-	for (int i = 0; i<expandinglist.size(); i++) //每次删除后大小都会变
+	for (int i = 0; i<expandinglist.size()-1; i++) //每次删除后大小都会变
 	{
 		//if ( !EqualTNC(expandinglist[i],expandinglist[i+1])) //相等
 		//{
@@ -386,6 +391,7 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 
 				//最后一个放tf的子节点
 				temp.node_info_.push_back(temp_out2);
+				//if (j == TargetNum - 1) std::cout << "成功扩展海上目标" << std::endl;
 
 				child_node_problems.push_back(temp);
 			}
@@ -436,7 +442,7 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 	}
 
 	bool ifsync = false;
-	if (tf_max - tf_min < 3600.0) ifsync = true;
+	if (tf_max - tf_min < 10800.0) ifsync = true;
 
 	// 如果有目标点的最大重访时间已经不可能满足要求，立即停止扩展
 	// 这一段应该先给8颗星的可能性都做一下验证，确认8颗星已扩展的时间相差不到1.5h为止
@@ -503,8 +509,8 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 		}
 	}
 
-	if (time_min > 2.0 * 86400.0 - 3600.0) {
-		ifFinished_ = true;
+	if (tnc.op_index_.total_impulse_ > 1.0) {
+		return;// 脉冲超过，停止扩展该TNC
 	}
 
 	for (int i = 0; i < TreeNum; i++) //按树扩展

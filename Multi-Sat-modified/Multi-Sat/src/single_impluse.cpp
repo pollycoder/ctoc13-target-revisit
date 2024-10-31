@@ -358,6 +358,173 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 }
 
 
+void single_imp_ship(const double m0, const double t0, const double* rv0, const double lambda0, const double phi0, const int Day,
+	int& flag0, double& mf, double& tf, double* dv, const int& NR, const int& branch)
+{
+	double lambda, phi;//目标点的经纬度，转化成弧度
+	double a0, e0, inc0, Omega0, omega0, f00, E00, M00, gamma00, coe0[6], ocoe0[6];//初始轨道根数
+	double c1, c2, k1, k2, k3, A, B, C, D;//中间参数
+	double tG, tG_J2, alphaG0_, alphaGt, alphaGf;//GMST
+	double C_J2, fs, as, am, delta_a, omega_ft, em, omegam, M0m, p0, dv_mod, v0_mod, iv[3];
+	int flag, root_num, NRi, Nmax, Nmin;
+	double dv_min, tmin;
+	double root[3];
+	double omega_J2_, Omega_J2_, M_J2_;//代表相关参数在J2下对时间的一阶导数
+	double mcoe[6], ocoe[6];//最终结果的平瞬根转换
+	double rv0_[6], rvf[6], hf, rtar_F[3], rtar[3];//考虑J2卫星实际位置速度
+
+	double lon1 = 53.558 * D2R;
+	double lon2 = 77.963 * D2R;
+	double omega_ship = (lon2 - lon1) / 2.0 / 86400.0;
+
+
+	flag0 = 0;
+
+	rv2coe(flag0, coe0, rv0, mu_km_s);//输入参数转化成轨道根数
+
+	a0 = coe0[0];
+	e0 = coe0[1];
+	inc0 = coe0[2];
+	Omega0 = coe0[3];
+	omega0 = coe0[4];
+	f00 = coe0[5];
+	E00 = f2E(flag, f00, e0);
+	M00 = E2M(flag, E00, e0);
+	gamma00 = atan(e0 * sin(f00) / (1.0 + e0 * cos(f00)));
+
+	//lambda = lambda0 * D2R;//目标点的经纬度，转化成弧度
+	//phi = phi0 * D2R;
+	lambda = lambda0;
+	phi = phi0;
+
+	k1 = (1.0 - e0 * e0) / (2.0 * e0) / (e0 * cos(f00 - gamma00) + cos(gamma00)) * (sin(f00 - gamma00) + sin(f00) * cos(gamma00) / (1.0 + e0 * cos(f00)));
+	k2 = (1.0 - e0 * e0) / 2.0 * (cos(f00 - gamma00) + cos(E00) * cos(gamma00)) / (e0 * cos(f00 - gamma00) + cos(gamma00));
+	k3 = sqrt((1.0 - e0 * e0) * (1.0 - e0 * e0) * (1.0 - e0 * e0)) / (2.0 * e0) / (e0 * cos(f00 - gamma00) + cos(gamma00)) *
+		(sin(f00 - gamma00) + (2.0 * e0 * sin(gamma00) + sin(f00) * cos(gamma00)) / (1.0 + e0 * cos(f00)));
+
+	alphaG0_ = alpha_G0 + omegaE * t0;//初始时刻GMST
+	while (alphaG0_ > D2PI)alphaG0_ -= D2PI;//注意范围[0, 2PI]
+
+	dv_min = 1.0e10;
+	tmin = 0.0;
+	//for (NRi = Nmin; NRi <= Nmax; NRi++)
+	{
+		//for (int bra = 0; bra < 2; bra++)//升交和降交两支
+		int bra = branch;
+		NRi = NR;
+		{
+			if (phi > inc0) {
+				flag0 = 0;
+				return;
+			}
+			omega_ft = (bra == 0) ? asin(sin(phi) / sin(inc0)) : -asin(sin(phi) / sin(inc0)) + DPI;//代表omega+ft，是最终轨道的参数，但是轨道面没变
+
+			c1 = -1 / sqrt(1 - sin(phi) * sin(phi)) * (cos(omega_ft) * sin(lambda) - sin(omega_ft) * cos(inc0) * cos(lambda));
+			c2 = -1 / sqrt(1 - sin(phi) * sin(phi)) * (-sin(omega_ft) * cos(inc0) * sin(lambda) - cos(omega_ft) * cos(lambda));
+			alphaGt = Omega0 + atan2(c1, c2);
+			while (alphaGt < alphaG0_)alphaGt += D2PI;
+			while (alphaGt > alphaG0_ + D2PI)alphaGt -= D2PI;
+			tG = ((alphaGt - alphaG0_) + 2.0 * DPI * (double(Day) - 1.0)) / (omegaE + omega_ship);
+
+			fs = (bra == 0) ? asin(sin(phi) / sin(inc0)) - omega0 : -asin(sin(phi) / sin(inc0)) - omega0 + DPI;
+
+			//求解关于(根号as)的三次方程，保留fabs(as-a0)最小的正根
+			A = fs + 2.0 * DPI * double(NRi) - 2.0 * e0 * sin(fs) - 2.0 * k2 * sin(fs) - k1 + k3 + 2.0 * e0 * k1 * cos(fs) - M00;
+			B = 0.0;
+			C = (2.0 * k2 * sin(fs) + k1 - k3 - 2.0 * e0 * k1 * cos(fs)) * a0;
+			D = -tG * sqrt(mu_km_s);
+			root_num = solve_cubic(A, B, C, D, root);
+			as = 0.0;
+			delta_a = 1.0e10;
+			if (root_num < 1) {
+				flag0 = 0;
+				return;
+			}
+			for (int i = 0; i < root_num; i++)
+			{
+				if (root[i] > 0 && delta_a > fabs(root[i] * root[i] - a0))
+				{
+					delta_a = fabs(root[i] * root[i] - a0);
+					as = root[i] * root[i];
+				}
+			}
+
+			if (as < Re_km) {
+				flag0 = 0;
+				return;
+			}
+
+
+			//线性J2模型相关
+			C_J2 = 1.5 * J2 * Re_km * Re_km * sqrt(mu_km_s) * pow(as, -3.5);
+			omega_J2_ = C_J2 * (2.0 - 2.5 * sin(inc0) * sin(inc0)) / (1.0 - e0 * e0) / (1.0 - e0 * e0);
+			Omega_J2_ = -C_J2 * cos(inc0) / (1.0 - e0 * e0) / (1.0 - e0 * e0);
+			M_J2_ = C_J2 * (1.0 - 1.5 * sin(inc0) * sin(inc0)) / pow((1.0 - e0 * e0), 1.5);
+			tG_J2 = (alphaGt - alphaG0_ + 2.0 * DPI * (double(Day) - 1.0)) / (omegaE + omega_ship - Omega_J2_);
+
+			//线性J2模型下的三次方程求解am，即平半长轴
+			A = A - (M_J2_ + omega_J2_) * tG_J2;
+			B = 0.0;
+			C = (2.0 * k2 * sin(fs) + k1 - k3 - 2.0 * e0 * k1 * cos(fs)) * a0;
+			D = -tG_J2 * sqrt(mu_km_s);
+			root_num = solve_cubic(A, B, C, D, root);
+			am = 0.0;
+			delta_a = 1.0e10;
+			for (int i = 0; i < root_num; i++)
+			{
+				if (root[i] > 0 && delta_a > fabs(root[i] * root[i] - a0))
+				{
+					delta_a = fabs(root[i] * root[i] - a0);
+					am = root[i] * root[i];
+				}
+			}
+
+			//此时am已求出，且i,Omega不变，需计算其他平轨道根数（近似解）
+			em = e0 + k2 * (am / a0 - 1.0);
+			omegam = omega0 + k1 * (am / a0 - 1.0);
+			M0m = M00 - k3 * (am / a0 - 1.0);
+			if (em < 0.0 || em > 1.0) {
+				flag0 = 0;
+				return;
+			}
+			if (am < Re_km) {
+				flag0 = 0;
+				return;
+			}
+			if (am > Re_km + 1000.0) {
+				flag0 = 0;
+				return;
+			}
+
+			//平根转化为瞬根，由于平瞬根转换程序中使用的Re为m，在这里也临时改成m来计算
+			mcoe[0] = am * 1000.0;
+			mcoe[1] = em;
+			mcoe[2] = inc0;
+			mcoe[3] = Omega0;
+			mcoe[4] = omegam;
+			mcoe[5] = E2f(flag, M2E(flag, M0m, em, 100, 1.0e-14), em);
+			M2O(mcoe, ocoe, J2);
+
+			//计算初始时刻的切向脉冲
+			p0 = a0 * (1 - e0 * e0);
+			dv_mod = sqrt(mu_km_s * (2.0 * (1.0 + e0 * cos(f00)) / p0 - 1.0 / (ocoe[0] / 1000.0))) - sqrt(mu_km_s / p0 * (1.0 + e0 * e0 + 2.0 * e0 * cos(f00)));
+			dv_min = dv_mod;
+
+			tmin = tG_J2;
+		}
+	}
+
+	v0_mod = sqrt(rv0[3] * rv0[3] + rv0[4] * rv0[4] + rv0[5] * rv0[5]);
+	for (int i = 0; i < 3; i++)iv[i] = rv0[i + 3] / v0_mod;
+	for (int i = 0; i < 3; i++)dv[i] = dv_min * iv[i];
+
+	tf = tmin;
+	mf = m0 * exp(-fabs(dv_min * 1000.0) / g0 / Isp);
+
+	flag0 = 1;
+}
+
+
 void single_imp(const double m0, const double t0, const double* rv0, const double lambda0, const double phi0, const double dt,
 	int& flag0, double& mf, double& tf, double* dv, int& NR, const int branch, const int sign) {
 	double lambda, phi;//目标点的经纬度，转化成弧度
@@ -519,128 +686,6 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 }
 
 
-double obj_func(const std::vector<double>& X, std::vector<double>& grad, void* f_data) {	
-	// Parameters
-	double* para = static_cast<double*> (f_data);
-	const double time_stamp = para[10];
-	
-	// Initialize the variables
-	double dv[3] = { 0.0, 0.0, 0.0 };
-	double rvf[6] = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
-	double tf = 0.0;
-
-	get_score_data(X, para, dv, rvf, tf);
-	return V_Norm2(dv, 3);
-}
-
-
-
-void get_score_data(const std::vector<double>& X, const double* para, double* dv, double* rvf, double& tf) {
-	const double hour = 3600.0;
-	const double t0 = para[0];
-	tf = para[1];
-	const double rv0[6] = { para[2], para[3], para[4], para[5], para[6], para[7] };
-	const double lambda0 = para[8];
-	const double phi0 = para[9];
-	const double time_stamp = para[10];
-	const double dv0[3] = { para[11], para[12], para[13] };
-
-	if(tf < 0) {
-		//std::cout << "tf = " << tf << std::endl;
-		for (int j = 0; j < 3; j++) {
-			dv[j] = penalty;
-			rvf[j] = penalty; rvf[j + 3] = penalty;
-			tf = penalty;
-		}
-		return;
-	}
-
-	// Perturbation
-	dv[0] = dv0[0] + (X[0] - 0.5) * 1e3;
-	dv[1] = dv0[1] + (X[1] - 0.5) * 1e3;
-	dv[2] = dv0[2] + (X[2] - 0.5) * 1e3;
-	tf += (X[3] - 0.5) * 2 * hour;															// Time: ±0.5h
-
-	// Observing time: if the time is too far away from the time stamp, return penalty
-	/*if (fabs(time_stamp - tf) > 0.7 * hour) {
-		for (int j = 0; j < 3; j++) {
-			dv[j] = penalty;
-			rvf[j] = penalty; rvf[j + 3] = penalty;
-			tf = penalty;
-		}
-		return;
-	}*/
-
-	// Add impulse and propagate
-	double v0[3] = { rv0[3], rv0[4], rv0[5] };
-	double v0_norm = V_Norm2(v0, 3);
-	V_Add(v0, v0, dv, 3);
-	double rv1[6] = { rv0[0], rv0[1], rv0[2], v0[0], v0[1], v0[2] };
-	propagate_j2(rv1, rvf, t0, tf);
-
-	// Visibility: if the target is not visible, return penalty
-	double R_target[3];
-	double geo[2] = { phi0, lambda0 };
-	Geodetic2J2000(geo, R_target, tf);
-	double half_cone_angle = 19.5 * D2R;
-	bool ifVisible = is_target_visible(rvf, R_target, half_cone_angle);
-	if (!ifVisible) { 
-		for (int j = 0; j < 3; j++) {
-			dv[j] = penalty;
-			rvf[j] = penalty; rvf[j + 3] = penalty;
-			tf = penalty;
-		}
-		return; 
-	}
-	/*else {
-		std::cout << "Succeed." << std::endl;
-		for (int j = 0; j < 6; j++) {
-			std::cout << "rvf[" << j << "] = " << rvf[j] << std::endl;
-		}
-	}*/
-}
-
-
-void shooting_target2target(const double t0, const double* rv0, const double time_stamp, const double lambda0, const double phi0, double& tf, double* dv, double* rvf, const int& branch) {
-	const double m0 = 1.0e6;																				// Useless, randomly assigned one valid value
-	double mf = 0.0; int flag = -1; int NR = -1;
-
-	// Initial value: single_imp
-	// All the 4 situations should be taken into account: 
-	// +dv, ascend; -dv, ascend; +dv, descend; -dv, descend
-	// Choose the one without penalty (mostly just one valid solution)
-	// tf: final time, not flight time, therefore t0 should be added after single_impulse provides an initial value
-	double impulse_temp = 1.0e6;
-	double impulse = 1.0e6;
-	double dt = time_stamp - t0;
-	for (int dv_sign = -1; dv_sign < 2; dv_sign += 2) {
-		single_imp(m0, t0, rv0, lambda0, phi0, dt, flag, mf, tf, dv, NR, branch, dv_sign);
-		if (flag == 0) {
-			tf = penalty;
-			for (int i = 0; i < 3; i++) {
-				dv[i] = penalty;
-				rvf[i] = penalty;
-				rvf[i + 3] = penalty;
-			}
-			continue;
-		}
-		tf += t0;																	
-		double f_data[14] = { t0, tf, rv0[0], rv0[1], rv0[2], rv0[3], rv0[4], rv0[5], lambda0, phi0, time_stamp, dv[0], dv[1], dv[2] };
-		std::vector<double> X = { 0.5, 0.5, 0.5, 0.5 };
-		nlopt_main(obj_func, f_data, X, impulse_temp, 4);
-
-		if (impulse_temp < impulse) {
-			get_score_data(X, f_data, dv, rvf, tf);
-			impulse = impulse_temp;
-			/*std::cout << "tf = " << tf << std::endl;
-			std::cout << "dv = " << dv[0] << " " << dv[1] << " " << dv[2] << std::endl;
-			std::cout << "NR = " << NR << std::endl;*/
-			return;
-		}
-	}
-}
-
-
 //CTOC13：利用J2Lambert问题，进行单次脉冲修正
 //与张刚论文作用类似，但是脉冲并不是近似切向，在一个轨道高度范围内近似选择脉冲最低且能观测到地面目标的
 //输入：
@@ -652,7 +697,7 @@ void shooting_target2target(const double t0, const double* rv0, const double tim
 //		RVf[6]：终端位置速度
 //		flag：求解成功返回1，求解失败返回0    
 //		h：最终采用的高度   
-void single_imp(double* dv, double* RVf, int& flag, const double* RV0, const double& t0, const double& tf, const double& lambda0, const double& phi0, const double& h) {
+void single_imp_J2Lambert(double* dv, double* RVf, int& flag, const double* RV0, const double& t0, const double& tf, const double& lambda0, const double& phi0, const double& h) {
 	double R0[3] = { RV0[0], RV0[1], RV0[2] };
 	double V0[3] = { RV0[3], RV0[4], RV0[5] };
 	double geogetic_Target[2] = { phi0, lambda0 };
@@ -717,7 +762,7 @@ void single_imp(double* dv, double* RVf, int& flag, const double* RV0, const dou
 //		保证目标可见
 //		轨道高度200-1000km
 void perturbation(double* dv, double& tf, const std::vector<double>& X) {
-	tf += (X[3] - 0.5) * 4000.;								
+	tf += (X[3] - 0.5) * 1.0e6;								
 	dv[0] += (X[0] - 0.5) * 1.0;
 	dv[1] += (X[1] - 0.5) * 1.0;
 	dv[2] += (X[2] - 0.5) * 1.0;
@@ -761,7 +806,7 @@ double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad
 	}
 	
 	propagate_j2linear (RV1, RVf, t0, tf);
-	//propagate_j2(RV1, RVf, t0, tf, 1e-6);
+	//propagate_j2(RV1, RVf, t0, tf, 1e-2);
 	double target_R[3];
 	get_target_R(id, tf, target_R);
 	bool ifVisible = is_target_visible(RVf, target_R, 19.5 * D2R);
@@ -783,14 +828,29 @@ double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad
 // TODO：优化之后，用高精度propagate再积一次分
 void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& t0, const double* RV0, const int& target_id, const int& NR, const int& branch) {
 	double target_geo[2];
-	get_target_geogetic(target_id, tf, target_geo);
-	double lambda = target_geo[1];
-	double phi = target_geo[0];
-
+	double lambda, phi;
+	if (target_id != 20) {
+		get_target_geogetic(target_id, tf, target_geo);
+		lambda = target_geo[1];
+		phi = target_geo[0];
+	}
+	else {
+		get_target_geogetic(target_id, 2.0 * 86400.0, target_geo);
+		double phi_end = target_geo[0];
+		get_target_geogetic(target_id, 0.0, target_geo);
+		double phi_start = target_geo[0];
+		phi = (phi_start + phi_end) / 2.0;
+		lambda = target_geo[1];
+	}
+	
 	double m0 = 1000.0, mf;
 
 	//注意张刚论文的方法里，tf是飞行时长，不是时刻
-	single_imp(m0, t0, RV0, lambda, phi, 1, flag, mf, tf, dv, NR, branch);
+	if(target_id != 20)
+		single_imp(m0, t0, RV0, lambda, phi, 1, flag, mf, tf, dv, NR, branch);
+	else {
+		single_imp_ship(m0, t0, RV0, lambda, phi, 1, flag, mf, tf, dv, NR, branch);
+	}
 	tf += t0;
 	
 	if (flag != 1) {
@@ -817,7 +877,7 @@ void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& 
 
 	double target_R[3];
 	get_target_R(target_id, tf, target_R);
-	bool ifVisible = is_target_visible(RVf, target_R, 19.5 * D2R);
+	bool ifVisible = is_target_visible(RVf, target_R, 19.9 * D2R);
 
 	if (!ifVisible) {
 		for (int j = 0; j < 3; j++) {

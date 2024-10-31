@@ -19,8 +19,14 @@
 const std::string space = " ";
  
 int main() {
-	MultiTree multi_tree(10000, 4, 50, 0.5);
+	MultiTree multi_tree(10000, 4, 50, 0.3);
+
+	auto beforeTime = std::chrono::steady_clock::now();
 	multi_tree.Run();
+	auto afterTime = std::chrono::steady_clock::now();
+
+	double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
+	std::cout << "×ÜºÄÊ±£º" << duration_second << "Ãë" << std::endl;
 
 	//test_lambert();
 	//test_single_impulse();

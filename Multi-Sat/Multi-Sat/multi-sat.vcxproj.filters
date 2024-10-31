@@ -204,4 +204,16 @@
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="input_data\debris_data.txt" />
+    <Text Include="input_data\in_PointLonLat.txt" />
+    <Text Include="input_data\in_SatRV0.txt" />
+    <Text Include="output_result\result.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="lib\nlopt.lib" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="bin\nlopt.dll" />
+  </ItemGroup>
 </Project>
