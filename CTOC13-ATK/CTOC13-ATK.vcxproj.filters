@@ -45,9 +45,12 @@
     <Library Include="lib\IAtkObjectD.lib" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="bin\ATKConnectorDll64.dll" />
-    <None Include="bin\ATKConnectorDllD64.dll" />
     <None Include="bin\AtMultiManeu.dll" />
     <None Include="bin\AtMultiManeuD.dll" />
+    <None Include="bin\ATKConnectorDll64.dll" />
+    <None Include="bin\ATKConnectorDllD64.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="bin\result.txt" />
   </ItemGroup>
 </Project>

@@ -42,6 +42,9 @@
     <None Include="bin\AtMultiManeu.dll" />
     <None Include="bin\AtMultiManeuD.dll" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="bin\result.txt" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>

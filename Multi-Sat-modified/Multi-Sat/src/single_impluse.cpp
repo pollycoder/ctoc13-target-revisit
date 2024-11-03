@@ -487,7 +487,7 @@ void single_imp_ship(const double m0, const double t0, const double* rv0, const 
 				flag0 = 0;
 				return;
 			}
-			if (am < Re_km) {
+			if (am < Re_km + 200.0) {
 				flag0 = 0;
 				return;
 			}
@@ -504,6 +504,16 @@ void single_imp_ship(const double m0, const double t0, const double* rv0, const 
 			mcoe[4] = omegam;
 			mcoe[5] = E2f(flag, M2E(flag, M0m, em, 100, 1.0e-14), em);
 			M2O(mcoe, ocoe, J2);
+
+			if (ocoe[0] / 1000.0 * (1 - ocoe[1]) < Re_km + 200.0) {
+				flag0 = 0;
+				return;
+			}
+
+			if (ocoe[0] / 1000.0 * (1 + ocoe[1]) > Re_km + 1000.0) {
+				flag0 = 0;
+				return;
+			}
 
 			//计算初始时刻的切向脉冲
 			p0 = a0 * (1 - e0 * e0);
@@ -806,7 +816,7 @@ double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad
 	}
 	
 	propagate_j2linear (RV1, RVf, t0, tf);
-	//propagate_j2(RV1, RVf, t0, tf, 1e-2);
+	//propagate_j2(RV1, RVf, t0, tf, 1e-3, 1e-5);
 	double target_R[3];
 	get_target_R(id, tf, target_R);
 	bool ifVisible = is_target_visible(RVf, target_R, 19.5 * D2R);
@@ -827,6 +837,7 @@ double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad
 // 利用h0给dv的初值，默认高度与初始高度一致，扰动之后的值与h0无关
 // TODO：优化之后，用高精度propagate再积一次分
 void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& t0, const double* RV0, const int& target_id, const int& NR, const int& branch) {
+	flag = 0;
 	double target_geo[2];
 	double lambda, phi;
 	if (target_id != 20) {
@@ -880,6 +891,7 @@ void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& 
 	bool ifVisible = is_target_visible(RVf, target_R, 19.9 * D2R);
 
 	if (!ifVisible) {
+		flag = 0;
 		for (int j = 0; j < 3; j++) {
 			dv[j] = penalty;
 			RVf[j] = penalty; RVf[j + 3] = penalty;

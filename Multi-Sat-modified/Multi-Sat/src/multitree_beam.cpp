@@ -28,13 +28,18 @@ bool sort_by_out(const OutputResult& a, const OutputResult& b)
 ****************************************************************************/
 inline bool MultiTree::SortTNC(const TNC& a, const TNC& b)
 {
-	/*double h_a, h_b;
-	h_a = 1.0 / pow(a.op_index_.time_cost, 1);
-	h_b = 1.0 / pow(b.op_index_.time_cost, 1);*/
-	if (a.op_index_.observed_num_ < b.op_index_.observed_num_) return true;
-	else if (a.op_index_.observed_num_ == b.op_index_.observed_num_) return a.op_index_.total_impulse_ < b.op_index_.observed_num_;
-	
-	return false;
+	if (a.op_index_.observed_num_ < b.op_index_.observed_num_) {
+		return true;
+	}
+	else if (a.op_index_.observed_num_ == b.op_index_.observed_num_) {
+		if (a.op_index_.total_impulse_ < b.op_index_.total_impulse_) {
+			return true;
+		}
+		else { return false; }
+	}
+	else {
+		return false;
+	}
 }
 
 /****************************************************************************
@@ -98,7 +103,7 @@ void MultiTree::Initialize(std::vector<TNC>& expandinglist)
 	layer_ = 0;
 	
 	//构建每颗树的初始轨道参数
-	for (int i= 0; i< TreeNum; i++)
+	/*for (int i= 0; i< TreeNum; i++)
 	{
 		OutputResult temp_output;
 		temp_output.rv_acc_;
@@ -109,19 +114,56 @@ void MultiTree::Initialize(std::vector<TNC>& expandinglist)
 		memcpy(temp_output.rv_acc_, sats_rv0, 6 * sizeof(double));
 
 		multi_tree_[i].root_->problem_.node_info_.push_back(temp_output);
+	}*/
+
+	// 每棵树构建一个虚拟根节点
+	for (int i = 0; i < TreeNum; i++)
+	{
+		OutputResult temp_output;
+		temp_output.action_ = 0;
+		temp_output.time_acc_ = 0.0;
+		for (int i = 0; i < 6; i++) temp_output.rv_acc_[i] = 0;
+
+		multi_tree_[i].root_->problem_.node_info_.push_back(temp_output);
 	}
+
+	// 虚拟节点下面扩展实际的初始轨道根数
+	// Mesh：4 x 2 x 5 x 7 x 7 x 7
+	// SMA：7200km-7350km
+	// ECC：0-0.001
+	// INC：120°-160°
+	// RAAN：0-360°
+	// AP：0-360°
+	// TA：0-360°
+	double sma_step = 50.0;
+	double ecc_step = 0.001;
+	double inc_step = 10.0 * D2R;
+	double angle_step = 60.0 * D2R;
+	
+	double sma_start = 7200.0, sma_end = 7350.0;
+	double ecc_start = 0.0, ecc_end = 0.001;
+	double inc_start = 120.0 * D2R, inc_end = 160.0 * D2R;
+	double angle_start = 0.0, angle_end = D2PI;
+
+	for (double sma = sma_start; sma <= sma_end; sma += sma_step) {
+		for (double ecc = ecc_start; ecc <= ecc_end; ecc += ecc_step) {
+			for (double inc = inc_start; inc < inc_end; inc += inc_step) {
+				for (double raan = angle_start; raan < angle_end; raan += angle_step) {
+
+				}
+			}
+		}
+	}
+
 
 	//最后将tnc完成
 	std::vector<Node*> old_expand_nodes;
-	for (int i=0; i< TreeNum; i++)
-	{
+	for (int i=0; i< TreeNum; i++) {
 		old_expand_nodes.push_back(multi_tree_[i].root_);
 	}
 
 	TNC temp(old_expand_nodes);
 	expandinglist.push_back(std::move(temp));
-	
-
 }
 
 
@@ -258,8 +300,10 @@ void TNC::Calculate_op_index()
 			if (solution_temp.solution_[i].node_info_[j].action_ == 2)
 			{
 				total_number++;
-				total_impulse += V_Norm2(solution_temp.solution_[i].node_info_[j].dv_, 3);
 				height_total += V_Norm2(solution_temp.solution_[i].node_info_[j].rv_acc_, 3) - Re_km;
+			}
+			else if (solution_temp.solution_[i].node_info_[j].action_ == 1) {
+				total_impulse += V_Norm2(solution_temp.solution_[i].node_info_[j].dv_, 3);
 			}
 		}
 
@@ -346,11 +390,20 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 
 				// 打靶到下一个目标，适配visit_gap
 				obs_shooting(flag, dv, tf, rvf, t0, rv0, j, NR, bra);
-				if (tf > 2.0 * 86400.0) continue;
+
+				// 打靶失败则不扩展
+				if (!flag) continue;
+				
 
 				double rv1[6], rv2[6];
 				memcpy(rv1, rv0, 6 * sizeof(double));
 				for (int i = 0; i < 3; i++) rv1[i + 3] += dv[i];
+
+				// 超过两天则只积分到172800s
+				if (tf > 2.0 * 86400.0) {
+					tf = 2.0 * 86400.0;
+					propagate_j2(rv1, rvf, t0, tf);
+				}
 
 
 				//TODO: 将结果输出
@@ -363,15 +416,21 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 				memcpy(temp_out.dv_, dv, 3 * sizeof(double));
 				temp_out.time_acc_ = t0;
 				temp_out.point_id_ = 0;
+				temp.node_info_.push_back(temp_out);
 
 				temp_out2.action_ = 2;
 				temp_out2.time_acc_ = tf;
 				memcpy(temp_out2.rv_acc_, rvf, 6 * sizeof(double));
 				for (int i = 0; i < 3; i++) temp_out2.dv_[i] = 0.0;
-				temp_out2.point_id_ = j + 1;
+				if (fabs(tf - 86400.0 * 2.0) < 1.0e-5) {
+					temp_out2.action_ = 3;
+					temp_out2.point_id_ = 0;
+				}
+				else {
+					temp_out2.point_id_ = j + 1;
+				}
 
-				temp.node_info_.push_back(temp_out);
-
+			
 				//检测t0到tf时段内有没有其他能看到的目标
 				double t0_60s = t0 - fmod(t0, 60.0);
 				double tf_60s = tf + 60.0 - fmod(tf, 60.0);
@@ -391,7 +450,9 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 
 				//最后一个放tf的子节点
 				temp.node_info_.push_back(temp_out2);
-				//if (j == TargetNum - 1) std::cout << "成功扩展海上目标" << std::endl;
+				/*if (j == TargetNum - 1) {
+					std::cout << "成功扩展海上目标，观测时间：" << temp_out2.time_acc_ << "s，脉冲：" << V_Norm2(temp_out.dv_, 3) << std::endl;
+				}*/
 
 				child_node_problems.push_back(temp);
 			}
@@ -434,6 +495,14 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 				//visited[temp.node_info_[k].point_id_] ++;
 				visible_timelist[temp.node_info_[k].point_id_ - 1].push_back(temp.node_info_[k].time_acc_);
 		}
+
+		if (temp.node_info_[temp.node_info_.size() - 1].time_acc_ < tf_min) {
+			tf_min = temp.node_info_[temp.node_info_.size() - 1].time_acc_;
+		}
+
+		if (temp.node_info_[temp.node_info_.size() - 1].time_acc_ > tf_max) {
+			tf_max = temp.node_info_[temp.node_info_.size() - 1].time_acc_;
+		}
 	}
 
 	// Push back之后对可见性时刻表排序
@@ -442,7 +511,9 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 	}
 
 	bool ifsync = false;
-	if (tf_max - tf_min < 10800.0) ifsync = true;
+	if (tf_max - tf_min < 14400.0 && tf_min > 0.0) {
+		ifsync = true;
+	}
 
 	// 如果有目标点的最大重访时间已经不可能满足要求，立即停止扩展
 	// 这一段应该先给8颗星的可能性都做一下验证，确认8颗星已扩展的时间相差不到1.5h为止
@@ -453,9 +524,9 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 	for (auto iter = max_revisit_gap.begin(); iter != max_revisit_gap.end(); iter++) {
 		idx++;
 		if (idx != TargetNum && ifsync) {
-			if (*iter > 21600.0) {
+			if (*iter > 21600.0 && ifsync) {
 				//std::cout << "目标" << idx << "的最大重访时间已经达到" << *iter << "sec" << std::endl;
-				//ifpossible = false;
+				ifpossible = false;
 			}
 			else if (*iter == 0.0) {
 				//std::cout << "目标" << idx << "还未被看到" << std::endl;
@@ -464,7 +535,7 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 		else {
 			if (*iter > 10800.0 && ifsync) {
 				//std::cout << "目标" << idx << "的最大重访时间已经达到" << *iter << "sec" << std::endl;
-				//if (ifsync) ifpossible = false;
+				if (ifsync) ifpossible = false;
 			}
 			else if (*iter == 0.0) {
 				//std::cout << "目标" << idx << "还未被看到" << std::endl;
@@ -472,7 +543,9 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 		}
 	}
 	//std::cout << std::endl;
-	if (!ifpossible) return;
+	if (!ifpossible) {
+		return;
+	}
 
 	// 扩展完之后更新该时刻表的最大重访时间，如果重访时间满足要求则visited置1
 	std::vector<double> max_revisit_list;
@@ -481,13 +554,13 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 		if (i != 20) {
 			if (max_revisit_list[i] < 6.0) {
 				visited[i]++;
-				std::cout << "目标" << i + 1 << "观测已完成" << std::endl;
+				//std::cout << "目标" << i + 1 << "观测已完成" << std::endl;
 			}
 		}
 		else {
 			if (max_revisit_list[i] < 3.0) {
 				visited[i]++;
-				std::cout << "目标" << i + 1 << "观测已完成" << std::endl;
+				//std::cout << "目标" << i + 1 << "观测已完成" << std::endl;
 			}
 		}
 	}
@@ -504,9 +577,14 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 	{
 		time[i] = tnc.tnc_[i]->problem_.node_info_.back().time_acc_;
 
-		if (time[i] < time_min - 1.0e-3 && time[i] < 2.0 * 86400.0) {
+		if (time[i] < time_min - 1.0e-3) {
 			time_min = time[i]; counter = i;
 		}
+	}
+
+	if (fabs(time_min - 86400.0 * 2.0) < 1.0e-3) {
+		ifFinished_ = true;
+		return;
 	}
 
 	if (tnc.op_index_.total_impulse_ > 1.0) {
@@ -558,6 +636,7 @@ void MultiTree::Expansion(std::vector<TNC>& expandinglist)
 {
 	layer_++;                                             //当前层数
 	std::vector< std::vector<TNC>> new_childnode_private;               //局部私有变量
+	bool ifPossible = false;
 	
 #pragma omp parallel
 	{
@@ -570,11 +649,15 @@ void MultiTree::Expansion(std::vector<TNC>& expandinglist)
 		}
 
 		//所有需要扩展的节点
+		
 #pragma omp for schedule(dynamic) 
 		for (int i = 0; i < expandinglist.size(); i++)
 		{
 			std::vector<TNC> newTNCs;
 			Expansion_one_TNC(expandinglist[i], newTNCs);
+			if (!newTNCs.empty()) {
+				ifPossible = true;
+			}
 			move(newTNCs.begin(), newTNCs.end(), back_inserter(new_childnode_private[id]));
 		}
 #pragma omp single
@@ -585,6 +668,10 @@ void MultiTree::Expansion(std::vector<TNC>& expandinglist)
 				buffer.clear();
 			}
 		}
+	}
+	if (!ifPossible) {
+		std::cout << "观测已经不可能完成，退出。" << std::endl;
+		ifFinished_ = true;
 	}
 }
 

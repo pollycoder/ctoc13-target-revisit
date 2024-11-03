@@ -90,7 +90,7 @@ struct Optimization_index
 {
 public:
 	//TODO;确定最终指标：时间，燃料消耗，观测质量
-	int observed_num_;  //空间碎片清理个数（CTOC13对应已填补的gap个数）
+	int observed_num_;  //空间碎片清理个数（CTOC13对应已观测的次数）
 	double total_impulse_;   //总速度增量
 	double time_cost;   //总观测时间
 	double height_aver; //总观测时间
