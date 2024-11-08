@@ -203,6 +203,7 @@
     <ClCompile Include="src\ODE45.cpp" />
     <ClCompile Include="src\problem_struct.cpp" />
     <ClCompile Include="src\single_impluse.cpp" />
+    <ClCompile Include="src\single_sat.cpp" />
     <ClCompile Include="src\visibility_4_targets.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -228,6 +229,7 @@
     <ClInclude Include="include\orbit_base\RungeKutta.h" />
     <ClInclude Include="include\problem_struct.h" />
     <ClInclude Include="include\single_impluse.h" />
+    <ClInclude Include="include\single_sat.h" />
     <ClInclude Include="include\visibility_4_targets.h" />
   </ItemGroup>
   <ItemGroup>

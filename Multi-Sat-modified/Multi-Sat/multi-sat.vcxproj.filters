@@ -150,6 +150,9 @@
     <ClCompile Include="src\Lambert.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="src\single_sat.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\MinPack\cminpack.h">
@@ -219,6 +222,9 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="include\J2Lambert.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="include\single_sat.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

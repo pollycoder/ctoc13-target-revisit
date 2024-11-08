@@ -3,6 +3,7 @@
 
 #include<math.h>
 #include<vector>
+#include <cmath>
 #include"single_impluse.h"
 #include"Constant.h"
 #include"OrbitFun.h"

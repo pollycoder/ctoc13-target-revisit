@@ -28,18 +28,15 @@ bool sort_by_out(const OutputResult& a, const OutputResult& b)
 ****************************************************************************/
 inline bool MultiTree::SortTNC(const TNC& a, const TNC& b)
 {
-	if (a.op_index_.observed_num_ < b.op_index_.observed_num_) {
+	if (a.op_index_.total_impulse_ - b.op_index_.total_impulse_ < -5.0e-4) {
 		return true;
 	}
-	else if (a.op_index_.observed_num_ == b.op_index_.observed_num_) {
-		if (a.op_index_.total_impulse_ < b.op_index_.total_impulse_) {
-			return true;
-		}
-		else { return false; }
+	else if (a.op_index_.time_cost < b.op_index_.time_cost) {
+		return true;
 	}
-	else {
-		return false;
-	}
+	else { return false; }
+		
+	
 }
 
 /****************************************************************************
@@ -101,9 +98,9 @@ void MultiTree::beam_discard(std::vector<TNC>& expandinglist)
 void MultiTree::Initialize(std::vector<TNC>& expandinglist)
 {
 	layer_ = 0;
-	
+
 	//构建每颗树的初始轨道参数
-	/*for (int i= 0; i< TreeNum; i++)
+	for (int i= 0; i< TreeNum; i++)
 	{
 		OutputResult temp_output;
 		temp_output.rv_acc_;
@@ -114,10 +111,10 @@ void MultiTree::Initialize(std::vector<TNC>& expandinglist)
 		memcpy(temp_output.rv_acc_, sats_rv0, 6 * sizeof(double));
 
 		multi_tree_[i].root_->problem_.node_info_.push_back(temp_output);
-	}*/
+	}
 
 	// 每棵树构建一个虚拟根节点
-	for (int i = 0; i < TreeNum; i++)
+	/*for (int i = 0; i < TreeNum; i++)
 	{
 		OutputResult temp_output;
 		temp_output.action_ = 0;
@@ -125,7 +122,7 @@ void MultiTree::Initialize(std::vector<TNC>& expandinglist)
 		for (int i = 0; i < 6; i++) temp_output.rv_acc_[i] = 0;
 
 		multi_tree_[i].root_->problem_.node_info_.push_back(temp_output);
-	}
+	}*/
 
 	// 虚拟节点下面扩展实际的初始轨道根数
 	// Mesh：4 x 2 x 5 x 7 x 7 x 7
@@ -135,35 +132,65 @@ void MultiTree::Initialize(std::vector<TNC>& expandinglist)
 	// RAAN：0-360°
 	// AP：0-360°
 	// TA：0-360°
-	double sma_step = 50.0;
+	/*double sma_step = 50.0;
 	double ecc_step = 0.001;
 	double inc_step = 10.0 * D2R;
 	double angle_step = 60.0 * D2R;
-	
+
 	double sma_start = 7200.0, sma_end = 7350.0;
 	double ecc_start = 0.0, ecc_end = 0.001;
 	double inc_start = 120.0 * D2R, inc_end = 160.0 * D2R;
-	double angle_start = 0.0, angle_end = D2PI;
+	double angle_start = 0.0, angle_end = D2PI;*/
 
-	for (double sma = sma_start; sma <= sma_end; sma += sma_step) {
-		for (double ecc = ecc_start; ecc <= ecc_end; ecc += ecc_step) {
-			for (double inc = inc_start; inc < inc_end; inc += inc_step) {
-				for (double raan = angle_start; raan < angle_end; raan += angle_step) {
+	//虚拟节点的TNC
+	//std::vector<Node*> old_expand_nodes;
+	//for (int i = 0; i < TreeNum; i++) {
+	//	old_expand_nodes.push_back(multi_tree_[i].root_);
+	//}
 
-				}
-			}
-		}
-	}
+	//TNC temp(old_expand_nodes);
+	//expandinglist.push_back(std::move(temp));
 
+	//std::vector<Node_problem> temp;						// 备选的初始轨道根数
 
-	//最后将tnc完成
+	//for (double sma = sma_start; sma <= sma_end; sma += sma_step) {
+	//	for (double inc = inc_start; inc < inc_end; inc += inc_step) {
+	//		for (double raan = angle_start; raan < angle_end; raan += angle_step) {	
+	//			for (double ta = angle_start; ta < angle_end; ta += angle_step) {
+	//				// 每个循环是要增加一个TNC，TNC要从实际根节点开始放入
+	//				OutputResult temp_output;
+	//				temp_output.rv_acc_;
+	//				temp_output.action_ = 0;
+	//				temp_output.time_acc_ = 0.0;
+	//				double sats_rv0[6]; int flag;
+	//				double coe_0[6] = { sma, 0.0, inc, raan, 0.0, ta };
+	//				coe2rv(flag, sats_rv0, coe_0, mu_km_s);
+	//				memcpy(temp_output.rv_acc_, sats_rv0, 6 * sizeof(double));
+	//				Node_problem node_prob;
+	//				node_prob.node_info_.push_back(temp_output);
+	//				temp.push_back(node_prob);
+	//			}		
+	//		}
+	//	}
+	//}
+
+	//每棵树都把这些备选节点都扩展一遍
+	//const int visited[21]{ 0 };
+	////const Node_problem initial_coe = temp;
+	//
+	//std::vector<std::vector<Node*>> expandnodes_alltree;			//8棵树的待选节点
+	//for (int i = 0; i < TreeNum; i++) {
+	//	expandnodes_alltree[i] = multi_tree_[i].ExpandNode(multi_tree_[i].root_, visited, temp);
+	//}
+
 	std::vector<Node*> old_expand_nodes;
-	for (int i=0; i< TreeNum; i++) {
+	for (int i = 0; i < TreeNum; i++) {
 		old_expand_nodes.push_back(multi_tree_[i].root_);
 	}
 
-	TNC temp(old_expand_nodes);
-	expandinglist.push_back(std::move(temp));
+	TNC tnctemp(old_expand_nodes);
+	expandinglist.push_back(std::move(tnctemp));
+	
 }
 
 
@@ -347,7 +374,9 @@ std::vector<Node*> Tree::ExpandNode(Node* node, const int* visited, const std::v
 		}
 		else //存在即放入已有子节点
 		{
-			expandnodes.push_back(*ifchild);
+			Node* temp_node = new Node(node, problem_[i]);
+			expandnodes.push_back(temp_node);           //放入新节点
+		
 		}
 	}
 
@@ -432,10 +461,10 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 
 			
 				//检测t0到tf时段内有没有其他能看到的目标
-				double t0_60s = t0 - fmod(t0, 60.0);
-				double tf_60s = tf + 60.0 - fmod(tf, 60.0);
+				/*double tf_60m = tf - 60.0;
+				double tf_60a = tf + 60.0;
 				std::vector<std::vector<double>> results;
-				AccessPointObjects(rv0, t0_60s, tf_60s, 60.0, 21, results);
+				AccessPointObjects(rv0, tf_60m, tf_60a, 60.0, 21, results);
 				for (int i = 0; i < TargetNum; i++) {
 					if (i == temp_out2.point_id_ - 1) continue;
 					for (int k = 0; k < results[i].size(); k++) {
@@ -446,7 +475,7 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 						temp_out3.point_id_ = i + 1;
 						temp.node_info_.push_back(temp_out3);
 					}
-				}
+				}*/
 
 				//最后一个放tf的子节点
 				temp.node_info_.push_back(temp_out2);

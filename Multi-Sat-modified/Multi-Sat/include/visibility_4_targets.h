@@ -40,7 +40,8 @@ void AccessPointObjects(
     double t_end,                                // 结束时间，单位：秒
     double dt,                                   // 时间步长，单位：秒
     int num_targets,                             // 地面目标数量
-    std::vector<std::vector<double>>& results    // 输出：每个目标的可见时间列表
+    std::vector<std::vector<double>>& results,    // 输出：每个目标的可见时间列表
+    const double half_cone_angle = 20.0 * D2R
 );
 
 /**
@@ -66,7 +67,8 @@ void MultiSat_AccessPointObjects(
     double t_end,             // 结束时间（秒）
     double dt,                // 时间步长（秒）
     int num_targets,          // 目标数量
-    std::vector<std::vector<double>>& results // 输出：可见性结果列表
+    std::vector<std::vector<double>>& results, // 输出：可见性结果列表
+    const double half_cone_angle = 20.0 * D2R
 );
 
 

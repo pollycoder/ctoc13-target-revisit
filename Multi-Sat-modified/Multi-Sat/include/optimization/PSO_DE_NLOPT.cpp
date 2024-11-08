@@ -459,7 +459,7 @@ void nlopt_main(double (*ObjFun)(const std::vector<double>& X, std::vector<doubl
 	//opter.add_equality_mconstraint(inequality_constraint, f_data, tol_ineq);
 
 	
-	double tol = 1e-8;
+	double tol = 1e-5;
 	opter.set_xtol_abs(1e-8);
 	opter.set_ftol_abs(1e-8);
 	opter.set_force_stop(1e-8);
@@ -480,6 +480,11 @@ void nlopt_main(double (*ObjFun)(const std::vector<double>& X, std::vector<doubl
 
 	
 	nlopt::result res = opter.optimize(X, f);
+	switch (res) {
+	case nlopt::SUCCESS: { std::cout << res << std::endl; }
+	//case nlopt::MAXEVAL_REACHED: { std::cout << "Maxeval Reached" << std::endl; }
+	default:break;
+	}
 	//int numers = opter.get_numevals();
 
 }

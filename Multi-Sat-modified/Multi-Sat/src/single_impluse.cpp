@@ -282,11 +282,11 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 				}
 			}
 
-			if (as < Re_km) {
+			/*if (as < Re_km) {
 				flag0 = 0;
 				return;
 			}
-			
+			*/
 
 			//线性J2模型相关
 			C_J2 = 1.5 * J2 * Re_km * Re_km * sqrt(mu_km_s) * pow(as, -3.5);
@@ -316,7 +316,7 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 			em = e0 + k2 * (am / a0 - 1.0);
 			omegam = omega0 + k1 * (am / a0 - 1.0);
 			M0m = M00 - k3 * (am / a0 - 1.0);
-			if (em < 0.0 || em > 1.0) {
+			/*if (em < 0.0 || em > 1.0) {
 				flag0 = 0;
 				return;
 			}
@@ -327,7 +327,11 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 			if (am > Re_km + 1000.0) {
 				flag0 = 0;
 				return;
-			}
+			}*/
+			/*if (fabs(am - 0.0) < 1.0e-5) {
+				flag0 = 0;
+				return;
+			}*/
 
 			//平根转化为瞬根，由于平瞬根转换程序中使用的Re为m，在这里也临时改成m来计算
 			mcoe[0] = am * 1000.0;
@@ -340,8 +344,20 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 
 			//计算初始时刻的切向脉冲
 			p0 = a0 * (1 - e0 * e0);
+			double temp1 = mu_km_s * (2.0 * (1.0 + e0 * cos(f00)) / p0 - 1.0 / (ocoe[0] / 1000.0));
+			double temp2 = mu_km_s / p0 * (1.0 + e0 * e0 + 2.0 * e0 * cos(f00));
+			if (temp1 < 0 || temp2 < 0) {
+				flag0 = 0;
+				return;
+			}
 			dv_mod = sqrt(mu_km_s * (2.0 * (1.0 + e0 * cos(f00)) / p0 - 1.0 / (ocoe[0] / 1000.0))) - sqrt(mu_km_s / p0 * (1.0 + e0 * e0 + 2.0 * e0 * cos(f00)));
 			dv_min = dv_mod;
+
+			// 判断是否为nan
+			if (dv_min != dv_min) {
+				flag0 = 0;
+				return;
+			}
 
 			tmin = tG_J2;
 		}
@@ -449,10 +465,10 @@ void single_imp_ship(const double m0, const double t0, const double* rv0, const 
 				}
 			}
 
-			if (as < Re_km) {
+			/*if (as < Re_km) {
 				flag0 = 0;
 				return;
-			}
+			}*/
 
 
 			//线性J2模型相关
@@ -483,18 +499,18 @@ void single_imp_ship(const double m0, const double t0, const double* rv0, const 
 			em = e0 + k2 * (am / a0 - 1.0);
 			omegam = omega0 + k1 * (am / a0 - 1.0);
 			M0m = M00 - k3 * (am / a0 - 1.0);
-			if (em < 0.0 || em > 1.0) {
+			/*if (em < 0.0 || em > 1.0) {
 				flag0 = 0;
 				return;
-			}
-			if (am < Re_km + 200.0) {
+			}*/
+			/*if (am < Re_km + 200.0) {
 				flag0 = 0;
 				return;
 			}
 			if (am > Re_km + 1000.0) {
 				flag0 = 0;
 				return;
-			}
+			}*/
 
 			//平根转化为瞬根，由于平瞬根转换程序中使用的Re为m，在这里也临时改成m来计算
 			mcoe[0] = am * 1000.0;
@@ -505,7 +521,7 @@ void single_imp_ship(const double m0, const double t0, const double* rv0, const 
 			mcoe[5] = E2f(flag, M2E(flag, M0m, em, 100, 1.0e-14), em);
 			M2O(mcoe, ocoe, J2);
 
-			if (ocoe[0] / 1000.0 * (1 - ocoe[1]) < Re_km + 200.0) {
+			/*if (ocoe[0] / 1000.0 * (1 - ocoe[1]) < Re_km + 200.0) {
 				flag0 = 0;
 				return;
 			}
@@ -513,12 +529,18 @@ void single_imp_ship(const double m0, const double t0, const double* rv0, const 
 			if (ocoe[0] / 1000.0 * (1 + ocoe[1]) > Re_km + 1000.0) {
 				flag0 = 0;
 				return;
-			}
+			}*/
 
 			//计算初始时刻的切向脉冲
 			p0 = a0 * (1 - e0 * e0);
 			dv_mod = sqrt(mu_km_s * (2.0 * (1.0 + e0 * cos(f00)) / p0 - 1.0 / (ocoe[0] / 1000.0))) - sqrt(mu_km_s / p0 * (1.0 + e0 * e0 + 2.0 * e0 * cos(f00)));
 			dv_min = dv_mod;
+
+			// 判断是否为nan
+			if (dv_min != dv_min) {
+				flag0 = 0;
+				return;
+			}
 
 			tmin = tG_J2;
 		}
@@ -772,10 +794,10 @@ void single_imp_J2Lambert(double* dv, double* RVf, int& flag, const double* RV0,
 //		保证目标可见
 //		轨道高度200-1000km
 void perturbation(double* dv, double& tf, const std::vector<double>& X) {
-	tf += (X[3] - 0.5) * 1.0e6;								
-	dv[0] += (X[0] - 0.5) * 1.0;
-	dv[1] += (X[1] - 0.5) * 1.0;
-	dv[2] += (X[2] - 0.5) * 1.0;
+	tf += (X[3] - 0.5) * 1.0e4;								
+	dv[0] += (X[0] - 0.5) * 1.0e3;
+	dv[1] += (X[1] - 0.5) * 1.0e3;
+	dv[2] += (X[2] - 0.5) * 1.0e3;
 }
 
 double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad, void* f_data) {
@@ -804,22 +826,24 @@ double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad
 	rv2coe(flag, coe, RV1, mu_km_s);
 	double a = coe[0], e = coe[1];
 
+	double impulse = V_Norm2(dv, 3);
+
 	// 用二体近似，为了给J2留出余量，设置20km的冗余
 	double peri = a * (1 - e) - Re_km;
 	double apo = a * (1 + e) - Re_km;
-	if(peri < 200.0 || apo > 1000.0) {
-		/*std::cout << "高度不符合要求" << " ";
-		std::cout << "peri = " << peri << " km ";
-		std::cout << "apo = " << peri << " km" << std::endl;*/
-		//std::cout << std::endl;
-		return penalty; 
-	}
+	//if(peri < 200.0 || apo > 1000.0) {
+	impulse += fabs(std::min(peri, 210.0) - 210.0);
+	impulse += fabs(std::max(apo, 990.0) - 990.0);
+		//return impulse;
+	//}
+
+
 	
 	propagate_j2linear (RV1, RVf, t0, tf);
 	//propagate_j2(RV1, RVf, t0, tf, 1e-3, 1e-5);
 	double target_R[3];
 	get_target_R(id, tf, target_R);
-	bool ifVisible = is_target_visible(RVf, target_R, 19.5 * D2R);
+	bool ifVisible = is_target_visible(RVf, target_R, 19.9 * D2R);
 	if(!ifVisible) { 
 		double Rf[3] = { RVf[0], RVf[1], RVf[2] };
 		double Rf_norm = V_Norm2(Rf, 3);
@@ -827,10 +851,11 @@ double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad
 		V_Multi(Rf_fixed, Rf, Re_km / Rf_norm, 3);
 		double dR[3];
 		V_Minus(dR, Rf_fixed, target_R, 3);
-		return V_Norm2(dR, 3) / Re_km;
+		impulse += V_Norm2(dR, 3) / Re_km / D2R;
+		return impulse;
 	}
 
-	double impulse = V_Norm2(dv, 3);
+	
 	return impulse;
 }
 
@@ -877,7 +902,7 @@ void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& 
 
 	double impulse = 0.0;
 	std::vector<double> X = { 0.5, 0.5, 0.5, 0.5 };
-	nlopt_main(obj_func_shooting, f_data, X, impulse, X.size(), 0, 5000);		//不输出
+	nlopt_main(obj_func_shooting, f_data, X, impulse, X.size(), 0, 1e4);		//不输出
 
 	perturbation(dv, tf, X);
 

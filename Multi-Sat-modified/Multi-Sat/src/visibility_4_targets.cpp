@@ -58,7 +58,8 @@ void AccessPointObjects(
     double t_end,             // 结束时间（秒）
     double dt,                // 时间步长（秒）
     int num_targets,          // 目标数量
-    std::vector<std::vector<double>>& results // 输出：可见性结果列表
+    std::vector<std::vector<double>>& results, // 输出：可见性结果列表
+    const double half_cone_angle
 ) {
     results.resize(num_targets);
 
@@ -67,7 +68,7 @@ void AccessPointObjects(
     memcpy(rv_sat, rv0, 6 * sizeof(double));
 
     // 定义卫星的半视场角（例如 10 度，转换为弧度）
-    double half_cone_angle = 20.0 * D2R; //留一些余量
+    //double half_cone_angle = 20.0 * D2R; //留一些余量
 
     // 传播卫星到时间 t
     double rv_sat_t[6];
@@ -125,7 +126,8 @@ void MultiSat_AccessPointObjects(
     double t_end,             // 结束时间（秒）
     double dt,                // 时间步长（秒）
     int num_targets,          // 目标数量
-    std::vector<std::vector<double>>& results // 输出：可见性结果列表
+    std::vector<std::vector<double>>& results, // 输出：可见性结果列表
+    const double half_cone_angle
 ) {
     results.clear();
     results.resize(num_targets);
@@ -140,7 +142,7 @@ void MultiSat_AccessPointObjects(
 
         //double* rv0 = rv0_list[i];
         std::vector<std::vector<double>> results_temp;
-        AccessPointObjects(rv0, t_start, t_end, dt, num_targets, results_temp);
+        AccessPointObjects(rv0, t_start, t_end, dt, num_targets, results_temp, half_cone_angle);
         for (int j = 0; j < results.size(); j++)
         {
             //把results_temp 填到results后面
