@@ -13,17 +13,19 @@
 * 04	   2024-10-15	 周		   开始初值探索
 ****************************************************************************/
 #include <stdlib.h>
-#include <omp.h>
 #include "multitree_beam.h"
 #include "single_impluse.h"
 #include "J2Lambert.h"
 #include "J2propagation.h"
 #include "single_sat.h"
 #include <iomanip>
+
+
+
 const std::string space = " ";
+
  
 int main() {
-
 	/***********************************************************************/
 	// 搜索
 	/*MultiTree multi_tree(10, 4, 50, 0.3);
@@ -55,44 +57,38 @@ int main() {
 
 	/***********************************************************************/
 	// 输出不同根数的观测次数
-	std::ofstream fout0;
-	fout0.open("../output_result/single_sat.bin", std::ios::out | std::ios::binary);
-
+	std::vector<std::string> buffer(num_loops);
 	auto beforeTime = std::chrono::steady_clock::now();
 
-	const double h_start = 500.0; const double h_end = 1000.0;
-	const double Omega_start = 0.0; const double Omega_end = D2PI;
-	const double inc_start = 0.0; const double inc_end = DPI;
-	const double h_mesh = (h_end - h_start) / 20;
-	const double Omega_mesh = (Omega_end - Omega_start) / 5;
-	const double inc_mesh = (inc_end - inc_start) / 2;
-
-	// Start the loop: 20 x 50 x 2
-	const int num_loops = 20 * 5 * 2;
-	std::vector<std::string> buffer(num_loops);
-
-	int index = 0;
-	for (int i = 0; i < 20; i++) {
+#pragma omp parallel for schedule(dynamic)
+	for (int i = 0; i < Omega_num; i++) {
 		double Omega = Omega_start + i * Omega_mesh;
-		for (int j = 0; j < 5; j++) {
+		for (int j = 0; j < inc_num; j++) {
 			double inc = inc_start + j * inc_mesh;
-			for (int k = 0; k < 2; k++) {
-				// Each loop: 0.015s
-				double h = h_start + k * h_mesh;
-				double coe0[6] = { Re_km + h, 0.0, inc, Omega, 0.0, 0.0 };
-				int num = single_sat_score(coe0);
-				buffer[index++] = std::to_string(coe0[0]) + " "
-					+ std::to_string(coe0[1]) + " "
-					+ std::to_string(coe0[2]) + " "
-					+ std::to_string(coe0[3]) + " "
-					+ std::to_string(coe0[4]) + " "
-					+ std::to_string(coe0[5]) + " "
-					+ std::to_string(num) + "\n";
+			for (int k = 0; k < h_num; k++) {
+				double a = Re_km + h_start + k * h_mesh;
+				double coe0[6] = { a, 0.0, inc, Omega, 0.0, 0.0 }; // 初始化 coe0 数组
+				int index = i * inc_num * h_num + j * h_num + k;
+				buffer[index] = std::to_string(coe0[0]) + " " +
+					std::to_string(coe0[1]) + " " +
+					std::to_string(coe0[2]) + " " +
+					std::to_string(coe0[3]) + " " +
+					std::to_string(coe0[4]) + " " +
+					std::to_string(coe0[5]) + " " +
+					std::to_string(single_sat_score(coe0)) + "\n";
 			}
 		}
 	}
 
-	// Write the entire buffer to file at once
+	auto afterTime = std::chrono::steady_clock::now();
+	double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
+	std::cout << "计算总耗时：" << duration_second << "秒" << std::endl;
+	// 16核，平均一条数据0.002s
+	// 500 * 200 * 100条数据，预计5.56小时计算完成
+	
+
+	// 写入文件
+	std::ofstream fout0("../output_result/single_sat.bin", std::ios::out | std::ios::binary);
 	if (fout0.is_open()) {
 		for (const auto& line : buffer) {
 			fout0 << line;
@@ -103,11 +99,10 @@ int main() {
 		std::cerr << "Unable to open file";
 	}
 
-	auto afterTime = std::chrono::steady_clock::now();
-
-	double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
-	std::cout << "总耗时：" << duration_second << "秒" << std::endl;
-	// 16核，预计7.81小时完成
+	auto finalTime = std::chrono::steady_clock::now();
+	duration_second = std::chrono::duration<double>(finalTime - afterTime).count();
+	std::cout << "写入总耗时：" << duration_second << "秒" << std::endl;
+	// 预计0.002s写入完成
 
 	return 0;
 }

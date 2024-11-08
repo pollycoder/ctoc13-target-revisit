@@ -2,6 +2,7 @@
 #include "OrbitFun.h"
 #include "visibility_4_targets.h"
 #include "Constant.h"
+#include <omp.h>
 
 
 int single_sat_score(const double* coe0) {
