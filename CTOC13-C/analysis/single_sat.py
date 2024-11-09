@@ -40,7 +40,7 @@ if __name__ == '__main__':
     print(data.shape)
 
     # Analysis
-    step = 50
+    step = 100
     sma = data[0:data.shape[0]:step, 0]
     inc = data[0:data.shape[0]:step, 2]
     raan = data[0:data.shape[0]:step, 3]
