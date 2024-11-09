@@ -36,6 +36,7 @@ int main() {
 
 	double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
 	std::cout << "总耗时：" << duration_second << "秒" << std::endl;*/
+	/***********************************************************************/
 
 
 	/***********************************************************************/
@@ -57,52 +58,16 @@ int main() {
 
 	/***********************************************************************/
 	// 输出不同根数的观测次数
-	std::vector<std::string> buffer(num_loops);
-	auto beforeTime = std::chrono::steady_clock::now();
+	// create_db_single();
+	/***********************************************************************/
 
-#pragma omp parallel for schedule(dynamic)
-	for (int i = 0; i < Omega_num; i++) {
-		double Omega = Omega_start + i * Omega_mesh;
-		for (int j = 0; j < inc_num; j++) {
-			double inc = inc_start + j * inc_mesh;
-			for (int k = 0; k < h_num; k++) {
-				double a = Re_km + h_start + k * h_mesh;
-				double coe0[6] = { a, 0.0, inc, Omega, 0.0, 0.0 }; // 初始化 coe0 数组
-				int index = i * inc_num * h_num + j * h_num + k;
-				buffer[index] = std::to_string(coe0[0]) + " " +
-					std::to_string(coe0[1]) + " " +
-					std::to_string(coe0[2]) + " " +
-					std::to_string(coe0[3]) + " " +
-					std::to_string(coe0[4]) + " " +
-					std::to_string(coe0[5]) + " " +
-					std::to_string(single_sat_score(coe0)) + "\n";
-			}
-		}
-	}
-
-	auto afterTime = std::chrono::steady_clock::now();
-	double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
-	std::cout << "计算总耗时：" << duration_second << "秒" << std::endl;
+	/***********************************************************************/
+	//输出不同根数的海上观测次数
+	std::ofstream fout0("../output_result/single_sat_ship.bin", std::ios::out | std::ios::binary);
+	create_db_ship(fout0);
 	// 16核，平均一条数据0.002s
-	// 500 * 200 * 100条数据，预计5.56小时计算完成
-	
-
-	// 写入文件
-	std::ofstream fout0("../output_result/single_sat.bin", std::ios::out | std::ios::binary);
-	if (fout0.is_open()) {
-		for (const auto& line : buffer) {
-			fout0 << line;
-		}
-		fout0.close();
-	}
-	else {
-		std::cerr << "Unable to open file";
-	}
-
-	auto finalTime = std::chrono::steady_clock::now();
-	duration_second = std::chrono::duration<double>(finalTime - afterTime).count();
-	std::cout << "写入总耗时：" << duration_second << "秒" << std::endl;
-	// 预计0.002s写入完成
+	// 500 * 200 * 150数据，预计8.33h完成
+	/***********************************************************************/
 
 	return 0;
 }
