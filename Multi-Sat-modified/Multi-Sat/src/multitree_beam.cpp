@@ -113,75 +113,7 @@ void MultiTree::Initialize(std::vector<TNC>& expandinglist)
 		multi_tree_[i].root_->problem_.node_info_.push_back(temp_output);
 	}
 
-	// 每棵树构建一个虚拟根节点
-	/*for (int i = 0; i < TreeNum; i++)
-	{
-		OutputResult temp_output;
-		temp_output.action_ = 0;
-		temp_output.time_acc_ = 0.0;
-		for (int i = 0; i < 6; i++) temp_output.rv_acc_[i] = 0;
-
-		multi_tree_[i].root_->problem_.node_info_.push_back(temp_output);
-	}*/
-
-	// 虚拟节点下面扩展实际的初始轨道根数
-	// Mesh：4 x 2 x 5 x 7 x 7 x 7
-	// SMA：7200km-7350km
-	// ECC：0-0.001
-	// INC：120°-160°
-	// RAAN：0-360°
-	// AP：0-360°
-	// TA：0-360°
-	/*double sma_step = 50.0;
-	double ecc_step = 0.001;
-	double inc_step = 10.0 * D2R;
-	double angle_step = 60.0 * D2R;
-
-	double sma_start = 7200.0, sma_end = 7350.0;
-	double ecc_start = 0.0, ecc_end = 0.001;
-	double inc_start = 120.0 * D2R, inc_end = 160.0 * D2R;
-	double angle_start = 0.0, angle_end = D2PI;*/
-
-	//虚拟节点的TNC
-	//std::vector<Node*> old_expand_nodes;
-	//for (int i = 0; i < TreeNum; i++) {
-	//	old_expand_nodes.push_back(multi_tree_[i].root_);
-	//}
-
-	//TNC temp(old_expand_nodes);
-	//expandinglist.push_back(std::move(temp));
-
-	//std::vector<Node_problem> temp;						// 备选的初始轨道根数
-
-	//for (double sma = sma_start; sma <= sma_end; sma += sma_step) {
-	//	for (double inc = inc_start; inc < inc_end; inc += inc_step) {
-	//		for (double raan = angle_start; raan < angle_end; raan += angle_step) {	
-	//			for (double ta = angle_start; ta < angle_end; ta += angle_step) {
-	//				// 每个循环是要增加一个TNC，TNC要从实际根节点开始放入
-	//				OutputResult temp_output;
-	//				temp_output.rv_acc_;
-	//				temp_output.action_ = 0;
-	//				temp_output.time_acc_ = 0.0;
-	//				double sats_rv0[6]; int flag;
-	//				double coe_0[6] = { sma, 0.0, inc, raan, 0.0, ta };
-	//				coe2rv(flag, sats_rv0, coe_0, mu_km_s);
-	//				memcpy(temp_output.rv_acc_, sats_rv0, 6 * sizeof(double));
-	//				Node_problem node_prob;
-	//				node_prob.node_info_.push_back(temp_output);
-	//				temp.push_back(node_prob);
-	//			}		
-	//		}
-	//	}
-	//}
-
-	//每棵树都把这些备选节点都扩展一遍
-	//const int visited[21]{ 0 };
-	////const Node_problem initial_coe = temp;
-	//
-	//std::vector<std::vector<Node*>> expandnodes_alltree;			//8棵树的待选节点
-	//for (int i = 0; i < TreeNum; i++) {
-	//	expandnodes_alltree[i] = multi_tree_[i].ExpandNode(multi_tree_[i].root_, visited, temp);
-	//}
+	
 
 	std::vector<Node*> old_expand_nodes;
 	for (int i = 0; i < TreeNum; i++) {
@@ -397,7 +329,7 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 	for (int j = 0; j < TargetNum; j++)
 	{
 		for (int bra = 0; bra < 2; bra++) {
-			for (int NR = 0; NR < 20; NR++) {
+			for (int NR = 0; NR < 5; NR++) {
 				if (visited[j] > 0)
 				{
 					continue;
@@ -460,11 +392,11 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 				}
 
 			
-				//检测t0到tf时段内有没有其他能看到的目标
-				/*double tf_60m = tf - 60.0;
-				double tf_60a = tf + 60.0;
+				//检测t0到tf时段内有没有其他能看到的目标，只覆盖1小时内的
+				double tf_60m = tf - 3600.0;
+				double t0_60a = t0 + 3600.0;
 				std::vector<std::vector<double>> results;
-				AccessPointObjects(rv0, tf_60m, tf_60a, 60.0, 21, results);
+				AccessPointObjects(rv0, t0, t0_60a, 60.0, 21, results);
 				for (int i = 0; i < TargetNum; i++) {
 					if (i == temp_out2.point_id_ - 1) continue;
 					for (int k = 0; k < results[i].size(); k++) {
@@ -475,7 +407,7 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 						temp_out3.point_id_ = i + 1;
 						temp.node_info_.push_back(temp_out3);
 					}
-				}*/
+				}
 
 				//最后一个放tf的子节点
 				temp.node_info_.push_back(temp_out2);
@@ -540,7 +472,7 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 	}
 
 	bool ifsync = false;
-	if (tf_max - tf_min < 14400.0 && tf_min > 0.0) {
+	if (tf_max - tf_min < 10800.0 && tf_min > 0.0) {
 		ifsync = true;
 	}
 
@@ -554,7 +486,7 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 		idx++;
 		if (idx != TargetNum && ifsync) {
 			if (*iter > 21600.0 && ifsync) {
-				//std::cout << "目标" << idx << "的最大重访时间已经达到" << *iter << "sec" << std::endl;
+				std::cout << "目标" << idx << "的最大重访时间已经达到" << *iter << "sec" << std::endl;
 				ifpossible = false;
 			}
 			else if (*iter == 0.0) {
@@ -563,7 +495,7 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 		}
 		else {
 			if (*iter > 10800.0 && ifsync) {
-				//std::cout << "目标" << idx << "的最大重访时间已经达到" << *iter << "sec" << std::endl;
+				std::cout << "目标" << idx << "的最大重访时间已经达到" << *iter << "sec" << std::endl;
 				if (ifsync) ifpossible = false;
 			}
 			else if (*iter == 0.0) {

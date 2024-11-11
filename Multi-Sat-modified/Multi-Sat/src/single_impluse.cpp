@@ -902,7 +902,7 @@ void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& 
 
 	double impulse = 0.0;
 	std::vector<double> X = { 0.5, 0.5, 0.5, 0.5 };
-	nlopt_main(obj_func_shooting, f_data, X, impulse, X.size(), 0, 1e4);		//不输出
+	nlopt_main(obj_func_shooting, f_data, X, impulse, X.size(), 0, 3000);		//不输出
 
 	perturbation(dv, tf, X);
 
