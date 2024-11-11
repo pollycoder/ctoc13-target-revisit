@@ -28,14 +28,14 @@ const std::string space = " ";
 int main() {
 	/***********************************************************************/
 	// 搜索
-	/*MultiTree multi_tree(10, 4, 50, 0.3);
+	MultiTree multi_tree(10, 4, 50, 0.3);
 
 	auto beforeTime = std::chrono::steady_clock::now();
 	multi_tree.Run();
 	auto afterTime = std::chrono::steady_clock::now();
 
 	double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
-	std::cout << "总耗时：" << duration_second << "秒" << std::endl;*/
+	std::cout << "总耗时：" << duration_second << "秒" << std::endl;
 	/***********************************************************************/
 
 
@@ -43,9 +43,9 @@ int main() {
 	// single_imp的失败算例
 	/*double m0 = 1000.0, mf, t0 = 0.0, tf;
 	double geo[2];
-	get_target_geogetic(2, 0.0, geo);
+	get_target_geogetic(1, 0.0, geo);
 	double dv[3];
-	int NR = 1, branch = 0, flag;
+	int NR = 3, branch = 1, flag;
 	double coe_00[6] = { sats_coe0[1][0], sats_coe0[1][1], sats_coe0[1][2], sats_coe0[1][3], sats_coe0[1][4], sats_coe0[1][5] };
 	double RV0[6];
 	coe2rv(flag, RV0, coe_00, mu_km_s);
@@ -63,8 +63,8 @@ int main() {
 
 	/***********************************************************************/
 	//输出不同根数的海上观测次数
-	std::ofstream fout0("../output_result/single_sat_ship.bin", std::ios::out | std::ios::binary);
-	create_db_ship(fout0);
+	/*std::ofstream fout0("../output_result/single_sat_ship.bin", std::ios::out | std::ios::binary);
+	create_db_ship(fout0);*/
 	// 16核，平均一条数据0.002s
 	// 500 * 200 * 150数据，预计8.33h完成
 	/***********************************************************************/
