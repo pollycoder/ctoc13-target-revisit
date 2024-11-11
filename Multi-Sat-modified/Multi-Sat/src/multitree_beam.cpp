@@ -329,7 +329,7 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 	for (int j = 0; j < TargetNum; j++)
 	{
 		for (int bra = 0; bra < 2; bra++) {
-			for (int NR = 0; NR < 5; NR++) {
+			for (int NR = 0; NR < 4; NR++) {
 				if (visited[j] > 0)
 				{
 					continue;
@@ -396,7 +396,7 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 				double tf_60m = tf - 3600.0;
 				double t0_60a = t0 + 3600.0;
 				std::vector<std::vector<double>> results;
-				AccessPointObjects(rv0, t0, t0_60a, 60.0, 21, results);
+				AccessPointObjects(rv0, t0, tf, 60.0, 21, results);
 				for (int i = 0; i < TargetNum; i++) {
 					if (i == temp_out2.point_id_ - 1) continue;
 					for (int k = 0; k < results[i].size(); k++) {
