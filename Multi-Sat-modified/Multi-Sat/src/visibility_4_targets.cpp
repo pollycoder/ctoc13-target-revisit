@@ -111,7 +111,7 @@ void AccessPointObjects(
         // 传播卫星到时间 t
         int flag = propagate_j2(rv_sat_t, rv_sat_t, t - dt, t);
         if (flag != 1) {
-            std::cerr << "Orbit propagation failed at time " << t << std::endl;
+            //std::cerr << "Orbit propagation failed at time " << t << std::endl;
             break;
         }
     }
