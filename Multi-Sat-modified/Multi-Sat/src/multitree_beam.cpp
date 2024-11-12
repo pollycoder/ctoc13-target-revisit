@@ -486,7 +486,7 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 		idx++;
 		if (idx != TargetNum && ifsync) {
 			if (*iter > 21600.0 && ifsync) {
-				std::cout << "目标" << idx << "的最大重访时间已经达到" << *iter << "sec" << std::endl;
+				//std::cout << "目标" << idx << "的最大重访时间已经达到" << *iter << "sec" << std::endl;
 				ifpossible = false;
 			}
 			else if (*iter == 0.0) {
@@ -495,7 +495,7 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 		}
 		else {
 			if (*iter > 10800.0 && ifsync) {
-				std::cout << "目标" << idx << "的最大重访时间已经达到" << *iter << "sec" << std::endl;
+				//std::cout << "目标" << idx << "的最大重访时间已经达到" << *iter << "sec" << std::endl;
 				if (ifsync) ifpossible = false;
 			}
 			else if (*iter == 0.0) {

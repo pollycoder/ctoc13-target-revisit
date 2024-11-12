@@ -28,7 +28,7 @@ const std::string space = " ";
 int main() {
 	/***********************************************************************/
 	// ËÑË÷
-	MultiTree multi_tree(1000, 4, 50, 0.3);
+	MultiTree multi_tree(10000, 4, 50, 0.3);
 
 	auto beforeTime = std::chrono::steady_clock::now();
 	multi_tree.Run();
