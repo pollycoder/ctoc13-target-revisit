@@ -28,13 +28,18 @@ bool sort_by_out(const OutputResult& a, const OutputResult& b)
 ****************************************************************************/
 inline bool MultiTree::SortTNC(const TNC& a, const TNC& b)
 {
-	if (a.op_index_.total_impulse_ - b.op_index_.total_impulse_ < -5.0e-4) {
+	if (a.op_index_.observed_num_ > b.op_index_.observed_num_) {
 		return true;
 	}
-	else if (a.op_index_.time_cost < b.op_index_.time_cost) {
-		return true;
+	else {
+		if (a.op_index_.total_impulse_ - b.op_index_.total_impulse_ < -5.0e-4) {
+			return true;
+		}
+		else if (a.op_index_.time_cost < b.op_index_.time_cost) {
+			return true;
+		}
+		else { return false; }
 	}
-	else { return false; }
 		
 	
 }
@@ -329,8 +334,9 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 	for (int j = 0; j < TargetNum; j++)
 	{
 		for (int bra = 0; bra < 2; bra++) {
-			for (int NR = 0; NR < 4; NR++) {
-				if (visited[j] > 0)
+			for (int NR = 0; NR < 5; NR++) {
+				int last_id = node->problem_.node_info_.back().point_id_;
+				if (visited[j] > 0 || last_id == j + 1)
 				{
 					continue;
 				}
@@ -473,7 +479,7 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 
 	bool ifsync = false;
 	if (tf_max - tf_min < 10800.0 && tf_min > 0.0) {
-		ifsync = true;
+		//ifsync = true;
 	}
 
 	// 如果有目标点的最大重访时间已经不可能满足要求，立即停止扩展

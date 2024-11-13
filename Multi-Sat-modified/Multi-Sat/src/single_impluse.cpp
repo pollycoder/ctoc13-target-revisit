@@ -843,7 +843,8 @@ double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad
 	//propagate_j2(RV1, RVf, t0, tf, 1e-3, 1e-5);
 	double target_R[3];
 	get_target_R(id, tf, target_R);
-	bool ifVisible = is_target_visible(RVf, target_R, 19.9 * D2R);
+	bool ifVisible = is_target_visible(RVf, target_R, 19.5 * D2R);
+	if (RVf[0] != RVf[0]) return penalty;
 	if(!ifVisible) { 
 		double Rf[3] = { RVf[0], RVf[1], RVf[2] };
 		double Rf_norm = V_Norm2(Rf, 3);
@@ -902,7 +903,7 @@ void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& 
 
 	double impulse = 0.0;
 	std::vector<double> X = { 0.5, 0.5, 0.5, 0.5 };
-	nlopt_main(obj_func_shooting, f_data, X, impulse, X.size(), 0, 3000);		//不输出
+	nlopt_main(obj_func_shooting, f_data, X, impulse, X.size(), 0, 10000);		//不输出
 
 	perturbation(dv, tf, X);
 

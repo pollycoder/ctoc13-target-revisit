@@ -81,7 +81,7 @@ void create_db_single(std::ofstream& fout0) {
 }
 
 
-int single_sat_ship(const double* coe0) {
+int single_sat_target(const double* coe0, const int& target_id) {
 	double rv0[6];
 	const double t0 = 0.0;
 	const double tf = 2.0 * 86400.0;
@@ -95,14 +95,14 @@ int single_sat_ship(const double* coe0) {
 	memcpy(rv0_vec.data(), rv0, 6 * sizeof(double));
 	rv0_list.push_back(rv0_vec);
 	std::vector<std::vector<double>> result;
-	AccessPointObjects(rv0, t0, tf, step, 21, result, wider_angle);
+	AccessPointObjects(rv0, t0, tf, step, target_id, result, wider_angle);
 
 
 	return result.back().size();
 }
 
 
-void create_db_ship(std::ofstream& fout0) {
+void create_db_target(std::ofstream& fout0, const int& target_id) {
 	std::vector<std::string> buffer(num_loops);
 	auto beforeTime = std::chrono::steady_clock::now();
 
@@ -121,7 +121,7 @@ void create_db_ship(std::ofstream& fout0) {
 					std::to_string(coe0[3]) + " " +
 					std::to_string(coe0[4]) + " " +
 					std::to_string(coe0[5]) + " " +
-					std::to_string(single_sat_ship(coe0)) + "\n";
+					std::to_string(single_sat_target(coe0, target_id)) + "\n";
 			}
 		}
 	}
