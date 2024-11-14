@@ -104,12 +104,9 @@ const double i_max = DPI;
 
 const double penalty = 1.0e6;
 
-const int TreeNum = 4;
+const int TreeNum = 1;
 const int TargetNum = 21;
 
-const double sats_coe0[TreeNum][6] = { {7374.137, 0.0, 57.0 * D2R, 225.0 * D2R, 0.0, 0.0},
-										{7374.137, 0.0, 57.0 * D2R, 315.0 * D2R, 0.0, 0.0},
-										{7374.137, 0.0, 57.0 * D2R, 45.0 * D2R, 0.0, 0.0},
-										{7374.137, 0.0, 57.0 * D2R, 135.0 * D2R, 0.0, 0.0} };
+const double sats_coe0[TreeNum][6] = { {7375.470333, 0.0, 40.0 * D2R, 1.79999999999992 * D2R, 0.0, 0.0} };
 
 #endif

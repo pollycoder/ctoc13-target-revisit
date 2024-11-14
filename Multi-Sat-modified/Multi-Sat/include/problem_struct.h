@@ -94,6 +94,7 @@ public:
 	double total_impulse_;   //总速度增量
 	double time_cost;   //总观测时间
 	double height_aver; //总观测时间
+	int total_ship_num;
 
 	Optimization_index()
 	{
@@ -101,9 +102,10 @@ public:
 		total_impulse_ = 0.0;
 		height_aver = 0.0;
 		time_cost = 0.0;
+		total_ship_num = 0;
 	}
 	Optimization_index(Optimization_index & a): observed_num_(a.observed_num_),total_impulse_(a.total_impulse_), time_cost(a.time_cost),
-		height_aver(a.height_aver){}
+		height_aver(a.height_aver), total_ship_num(a.total_ship_num){}
 };
 
 /****************************************************************************

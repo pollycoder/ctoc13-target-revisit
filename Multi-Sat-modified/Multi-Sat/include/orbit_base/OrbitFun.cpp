@@ -405,7 +405,7 @@ void rv2coe(int& flag, double* coe, const double* RV, double mu = 3.98600441500e
 	//	coe[0] = 0.5 * p;//抛物线轨道的近星距
 	//else
 	coe[0] = p / (fabs(1.0 - coe[1] * coe[1]));//半长轴
-	bool judge = (coe[1] > 0.0);
+	bool judge = (fabs(coe[1]) > 0.0);
 	double unite[3] = { 0.0 };
 	if (judge)
 		for (i = 0; i < 3; i++) unite[i] = evector[i] / coe[1];//偏心率单位矢量

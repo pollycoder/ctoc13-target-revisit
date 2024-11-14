@@ -729,7 +729,7 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 //		RVf[6]：终端位置速度
 //		flag：求解成功返回1，求解失败返回0    
 //		h：最终采用的高度   
-void single_imp_J2Lambert(double* dv, double* RVf, int& flag, const double* RV0, const double& t0, const double& tf, const double& lambda0, const double& phi0, const double& h) {
+void single_imp_J2Lambert(double* dv, double* RVf, int& flag, const double* RV0, const double& t0, const double& tf, const double& lambda0, const double& phi0, const double& h, const int& N, const int& branch) {
 	double R0[3] = { RV0[0], RV0[1], RV0[2] };
 	double V0[3] = { RV0[3], RV0[4], RV0[5] };
 	double geogetic_Target[2] = { phi0, lambda0 };
@@ -746,7 +746,7 @@ void single_imp_J2Lambert(double* dv, double* RVf, int& flag, const double* RV0,
 	double Rf_temp[3];
 	V_Multi(Rf_temp, R_Target, R / Re_km, 3);
 	for (int i = 0; i < 3; i++) RVf_temp[i] = Rf_temp[i];
-	J2Lambert_short(flag_temp, RV1_temp, RVf_temp, RV0, tf - t0, mu_km_s);
+	J2Lambert_short(flag_temp, RV1_temp, RVf_temp, RV0, tf - t0, mu_km_s, N, branch);
 
 	bool ifvisible = is_target_visible(RVf_temp, R_Target, 19.5 * D2R);
 	if (!ifvisible) flag_temp = 0;
@@ -832,18 +832,19 @@ double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad
 	double peri = a * (1 - e) - Re_km;
 	double apo = a * (1 + e) - Re_km;
 	//if(peri < 200.0 || apo > 1000.0) {
-	impulse += fabs(std::min(peri, 210.0) - 210.0);
-	impulse += fabs(std::max(apo, 990.0) - 990.0);
+	impulse += fabs(std::min(peri, 201.0) - 201.0);
+	impulse += fabs(std::max(apo, 999.0) - 999.0);
 		//return impulse;
 	//}
 
 
 	
-	propagate_j2linear (RV1, RVf, t0, tf);
+	//propagate_j2linear (RV1, RVf, t0, tf);
 	//propagate_j2(RV1, RVf, t0, tf, 1e-3, 1e-5);
+	rv02rvf(flag, RVf, RV0, tf - t0, mu_km_s);
 	double target_R[3];
 	get_target_R(id, tf, target_R);
-	bool ifVisible = is_target_visible(RVf, target_R, 19.5 * D2R);
+	bool ifVisible = is_target_visible(RVf, target_R, 19.9 * D2R);
 	if (RVf[0] != RVf[0]) return penalty;
 	if(!ifVisible) { 
 		double Rf[3] = { RVf[0], RVf[1], RVf[2] };
@@ -883,8 +884,15 @@ void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& 
 	double m0 = 1000.0, mf;
 
 	//注意张刚论文的方法里，tf是飞行时长，不是时刻
-	if(target_id != 20)
+	if (target_id != 20) {
 		single_imp(m0, t0, RV0, lambda, phi, 1, flag, mf, tf, dv, NR, branch);
+
+		//J2 Lambert打靶,一圈以两小时记
+		/*tf = NR * 4000.0;
+		double R0[3] = { RV0[0], RV0[1], RV0[2] };
+		double h = V_Norm2(R0, 3) - Re_km;
+		single_imp_J2Lambert(dv, RVf, flag, RV0, t0, tf, lambda, phi, h, NR, branch);*/
+	}
 	else {
 		single_imp_ship(m0, t0, RV0, lambda, phi, 1, flag, mf, tf, dv, NR, branch);
 	}
@@ -903,7 +911,7 @@ void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& 
 
 	double impulse = 0.0;
 	std::vector<double> X = { 0.5, 0.5, 0.5, 0.5 };
-	nlopt_main(obj_func_shooting, f_data, X, impulse, X.size(), 0, 10000);		//不输出
+	nlopt_main(obj_func_shooting, f_data, X, impulse, X.size(), 0, 3000);		//不输出
 
 	perturbation(dv, tf, X);
 

@@ -28,18 +28,31 @@ bool sort_by_out(const OutputResult& a, const OutputResult& b)
 ****************************************************************************/
 inline bool MultiTree::SortTNC(const TNC& a, const TNC& b)
 {
-	if (a.op_index_.observed_num_ > b.op_index_.observed_num_) {
+	if (a.op_index_.total_ship_num > b.op_index_.total_ship_num) {
+		// 优先看ship
 		return true;
 	}
-	else {
-		if (a.op_index_.total_impulse_ - b.op_index_.total_impulse_ < -5.0e-4) {
+	else if (a.op_index_.total_ship_num == b.op_index_.total_ship_num) {
+		// ship次数保证相等，看平均每次的观测时间
+		double a_ave_t = a.op_index_.time_cost / a.op_index_.observed_num_;
+		double b_ave_t = b.op_index_.time_cost / b.op_index_.observed_num_;
+		if (a_ave_t < b_ave_t) {
 			return true;
 		}
-		else if (a.op_index_.time_cost < b.op_index_.time_cost) {
-			return true;
+		else if (a_ave_t == b_ave_t) {
+			// 平均时间也相等，比脉冲
+			if (a.op_index_.total_impulse_ < b.op_index_.total_impulse_) {
+				return true;
+			}
+			else {
+				return false;
+			}
 		}
-		else { return false; }
+		else {
+			return false;
+		}
 	}
+	else { return false; }
 		
 	
 }
@@ -250,6 +263,7 @@ void TNC::Calculate_op_index()
 	int  total_number = 0;
 	Solution solution_temp = GetBack();
 	double height_total = 0.0;
+	int total_ship_num = 0;
 	
 	double time_last = -1.0e10;
 	for (int i= 0; i< TreeNum; i++)
@@ -265,6 +279,7 @@ void TNC::Calculate_op_index()
 			{
 				total_number++;
 				height_total += V_Norm2(solution_temp.solution_[i].node_info_[j].rv_acc_, 3) - Re_km;
+				if (solution_temp.solution_[i].node_info_[j].point_id_ == 21) total_ship_num++;
 			}
 			else if (solution_temp.solution_[i].node_info_[j].action_ == 1) {
 				total_impulse += V_Norm2(solution_temp.solution_[i].node_info_[j].dv_, 3);
@@ -277,6 +292,7 @@ void TNC::Calculate_op_index()
 	op_index_.height_aver = height_total / total_number;
 	op_index_.total_impulse_ = total_impulse;
 	op_index_.observed_num_ = total_number;
+	op_index_.total_ship_num = total_ship_num;
 }
 
 /****************************************************************************
@@ -351,15 +367,19 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 				a = coe0[0]; e = coe0[1];
 				hmin = a * (1 - e) - Re_km;
 				hmax = a * (1 + e) - Re_km;
-				if (hmin < 201.0 || hmax > 999.0) continue;
+				if (hmin < 201.0 || hmax > 999.0) {
+					continue;
+				}
 
 				double rvf[6];
 
 				// 打靶到下一个目标，适配visit_gap
 				obs_shooting(flag, dv, tf, rvf, t0, rv0, j, NR, bra);
 
-				// 打靶失败则不扩展
-				if (!flag) continue;
+				// 打靶失败且时间只剩下不到8小时，则直接无机动到结束
+				if (!flag) {
+					continue;
+				}
 				
 
 				double rv1[6], rv2[6];
@@ -398,11 +418,12 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 				}
 
 			
-				//检测t0到tf时段内有没有其他能看到的目标，只覆盖1小时内的
-				double tf_60m = tf - 3600.0;
-				double t0_60a = t0 + 3600.0;
+				//检测t0到tf时段内有没有其他能看到的目标，只覆盖3min内的
+				/*double tf_60m = tf - 180.0;
+				double t0_60a = t0 + 14400.0;
+				t0_60a = tf;
 				std::vector<std::vector<double>> results;
-				AccessPointObjects(rv0, t0, tf, 60.0, 21, results);
+				AccessPointObjects(rv0, t0, t0_60a, 60.0, 21, results);
 				for (int i = 0; i < TargetNum; i++) {
 					if (i == temp_out2.point_id_ - 1) continue;
 					for (int k = 0; k < results[i].size(); k++) {
@@ -413,7 +434,7 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 						temp_out3.point_id_ = i + 1;
 						temp.node_info_.push_back(temp_out3);
 					}
-				}
+				}*/
 
 				//最后一个放tf的子节点
 				temp.node_info_.push_back(temp_out2);
@@ -554,7 +575,7 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 		return;
 	}
 
-	if (tnc.op_index_.total_impulse_ > 1.0) {
+	if (tnc.op_index_.total_impulse_ > 0.9) {
 		return;// 脉冲超过，停止扩展该TNC
 	}
 
@@ -687,7 +708,7 @@ void MultiTree::RecordBestResult(std::vector<TNC>& expandinglist, std::ofstream&
 		result_now_.total_observed_num_ = expandinglist[0].op_index_.observed_num_;
 		result_now_.height_aver_ = expandinglist[0].op_index_.height_aver;
 	}
-	std::cout << "Removal total num, Time:  " << result_now_.total_observed_num_ << " " << result_now_.time_cost_ << std::endl;
+	std::cout << "Removal total num, Time, Impulse:  " << result_now_.total_observed_num_ << " " << result_now_.time_cost_ << " " << result_now_.total_impulse_ << std::endl;
 	//fout1 << "Removal total num, Time:  " << result_now_.total_observed_num_ << " " << result_now_.time_cost_ << std::endl;
 
 
@@ -715,7 +736,7 @@ void MultiTree::RecordBestResult(std::vector<TNC>& expandinglist, std::ofstream&
 	
 	//按照格式输出最终结果
 	
-	fout1 << std::endl << std::endl << "清理个数：" << result_now_.total_observed_num_ << "当且节点数量" << expandinglist.size() << "当前时间" << result_now_.time_cost_ << std::endl;
+	fout1 << std::endl << std::endl << "清理个数：" << result_now_.total_observed_num_ << " 当前节点数量：" << expandinglist.size() << " 当前时间：" << result_now_.time_cost_ << " 当前脉冲总量：" << result_now_.total_impulse_ << std::endl;
 	for (int id_sat = 0; id_sat < TreeNum; id_sat++)
 	{
 		for (int i = 0; i < result_now_.solution_[id_sat].node_info_.size(); i++)

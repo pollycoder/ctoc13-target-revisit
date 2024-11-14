@@ -49,7 +49,7 @@ void J2Lambert_short(int& flag, double* v1vec, double* v2vec, double& a, double&
     //if (flag == 0) std::cout << "J2 Lambert failed." << std::endl;
 }
 
-void J2Lambert_short(int&flag, double* RV1, double* RVf, const double* RV0, const double& TOF, const double& mu) {
+void J2Lambert_short(int&flag, double* RV1, double* RVf, const double* RV0, const double& TOF, const double& mu, const int& N, const int& bra) {
     flag = 0;
     int flag_temp = 0;
     double R0[3] = { RV0[0], RV0[1], RV0[2] };
@@ -66,23 +66,23 @@ void J2Lambert_short(int&flag, double* RV1, double* RVf, const double* RV0, cons
     int Nmax = TOF / T + 1;
 
     int way_opt, branch_opt;
-    for (int N = Nmin; N <= Nmax; N++) {
-        if (N < 0) continue;
-        for (int way = 0; way < 2; way++) {
+    //for (int N = Nmin; N <= Nmax; N++) {
+       // if (N < 0) continue;
+        //for (int way = 0; way < 2; way++) {
             for (int branch = 0; branch < 2; branch++) {
-                J2Lambert_short(flag_temp, v1temp, v2temp, a, e, R0, Rf, TOF, mu, way, N, branch);
+                J2Lambert_short(flag_temp, v1temp, v2temp, a, e, R0, Rf, TOF, mu, bra, N, branch);
                 if (flag_temp != 1) {
                     //std::cout << "J2求解失败" << std::endl;
                     continue;
                 }
-                if (a * (1 - e) - Re_km < 220.0) {
-                    //std::cout << "近地点高度过低，peri = " << a * (1-e) - Re_km << " km" << std::endl;
-                    continue;
-                }
-                if (a * (1 + e) - Re_km > 980.0) {
-                    //std::cout << "远地点高度过高，apo = " << a * (1+e) - Re_km  << " km" << std::endl;
-                    continue;
-                }
+                //if (a * (1 - e) - Re_km < 220.0) {
+                //    //std::cout << "近地点高度过低，peri = " << a * (1-e) - Re_km << " km" << std::endl;
+                //    continue;
+                //}
+                //if (a * (1 + e) - Re_km > 980.0) {
+                //    //std::cout << "远地点高度过高，apo = " << a * (1+e) - Re_km  << " km" << std::endl;
+                //    continue;
+                //}
 
                 V_Minus(dv1temp, v1temp, V0, 3);
                 dvtemp = V_Norm2(dv1temp, 3);
@@ -94,12 +94,12 @@ void J2Lambert_short(int&flag, double* RV1, double* RVf, const double* RV0, cons
                         RV1[i + 3] = v1temp[i];
                     }
                     flag = flag_temp;
-                    way_opt = way;
+                    way_opt = bra;
                     branch_opt = branch;
                 }
-            }
+            
         }
-    }
+    //}
 
     //if (flag != 1) std::cout << "J2 Lambert failed." << std::endl;
     //else std::cout << "way = " << way_opt << " " << "branch = " << branch_opt << std::endl;*/
@@ -121,7 +121,7 @@ void test_lambert() {
     std::cout << "v1 = " << v1[0] << " " << v1[1] << " " << v1[2] << std::endl;
     std::cout << "v2 = " << v2[0] << " " << v2[1] << " " << v2[2] << std::endl;
 
-    J2Lambert_short(flag, rv1, rvf, rv0, 200000.0, mu_km_s);
+    //J2Lambert_short(flag, rv1, rvf, rv0, 200000.0, mu_km_s);
     std::cout << "rv0 = " << rv0[0] << " " << rv0[1] << " " << rv0[2] << " " << rv0[3] << " " << rv0[4] << " " << rv0[5] << std::endl;
     std::cout << "rv1 = " << rv1[0] << " " << rv1[1] << " " << rv1[2] << " " << rv1[3] << " " << rv1[4] << " " << rv1[5] << std::endl;
     std::cout << "dv = " << rv1[3] - rv0[3] << " " << rv1[4] - rv0[4] << " " << rv1[5] - rv0[5] << std::endl;
