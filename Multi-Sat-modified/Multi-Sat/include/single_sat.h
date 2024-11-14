@@ -30,3 +30,18 @@ void create_db_target(std::ofstream& fout0, const int& target_id);
 
 // 读取ship的数据库bin，筛掉观测少于阈值的数据
 bool filter_bin_file(const std::string& input_filename, const std::string& output_filename, int threshold);
+
+// 优化单颗星单次机动
+// 输入参数：
+//		f_data[0-5]：轨道根数
+//		f_data[6]：脉冲时间
+// 优化变量：
+//		t：脉冲时间，初值暂定为1天，扰动范围6小时
+//		dv[3]：脉冲3个分量，初值为0，扰动范围0.5km/s
+// 目标：
+//		t_gap_ave：平均每个目标的重访时间
+// 约束：
+//		h：轨道高度，200km-1000km
+//		dv：脉冲不大于1km/s
+double obj_single_sat(const std::vector<double>& X, std::vector<double>& grad, void* f_data);
+void get_revisit(const std::vector<double>& X, const double* para, std::vector<double>& max_revisit, double& t_imp, double* dv, double& score);

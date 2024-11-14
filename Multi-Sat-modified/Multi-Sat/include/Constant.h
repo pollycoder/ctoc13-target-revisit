@@ -107,6 +107,6 @@ const double penalty = 1.0e6;
 const int TreeNum = 1;
 const int TargetNum = 21;
 
-const double sats_coe0[TreeNum][6] = { {7375.470333, 0.0, 40.0 * D2R, 1.79999999999992 * D2R, 0.0, 0.0} };
+const double sats_coe0[TreeNum][6] = { {7375.470333, 0.0, 120.8 * D2R, 310 * D2R, 0.0, 0.0} };
 
 #endif

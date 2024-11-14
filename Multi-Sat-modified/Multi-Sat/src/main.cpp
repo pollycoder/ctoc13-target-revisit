@@ -67,8 +67,9 @@ void fail_example_singleimp() {
 	std::cout << "dv = " << dv[0] << " " << dv[1] << " " << dv[2] << std::endl;
 }
 
- 
-int main() {
+
+// 读取数据库，筛选并生成新的数据库
+void read_db() {
 	const std::string input_filename1 = "../output_result/single_sat_21_R.bin";
 	const std::string output_filename1 = "../output_result/single_better_21_R.bin";
 	int threshold = 10;
@@ -100,5 +101,29 @@ int main() {
 
 	// 16核，总计8.33h完成
 
+}
+
+ 
+int main() {
+	double para[7] = { sats_coe0[0][0], sats_coe0[0][1], sats_coe0[0][2], sats_coe0[0][3], sats_coe0[0][4], sats_coe0[0][5], 86400.0 };
+	std::vector<double> X = { 0.5, 0.5, 0.5, 0.5 };
+	double f;
+
+	auto beforeTime = std::chrono::steady_clock::now();
+	nlopt_main(obj_single_sat, para, X, f, X.size());
+	auto afterTime = std::chrono::steady_clock::now();
+	double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
+	std::cout << "总耗时：" << duration_second << "秒" << std::endl;
+	std::cout << f << std::endl;
+	std::cout << "X = " << X[0] << " " << X[1] << " " << X[2] << " " << X[3] << std::endl;
+
+	std::vector<double> max_revisit;
+	double t_imp, dv[3];
+	get_revisit(X, para, max_revisit, t_imp, dv, f);
+	std::cout << "t = " << t_imp << std::endl;
+	std::cout << "dv = " << dv[0] << " " << dv[1] << " " << dv[2] << std::endl;
+	for (auto iter = max_revisit.begin(); iter != max_revisit.end(); iter++) {
+		std::cout << *iter << std::endl;
+	}
 	return 0;
 }
