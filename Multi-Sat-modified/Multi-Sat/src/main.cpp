@@ -24,34 +24,35 @@
 
 const std::string space = " ";
 
- 
-int main() {
-	/***********************************************************************/
-	// 搜索
-	/*MultiTree multi_tree(1000, 4, 50, 0.3);
+
+// 多棵树搜索（有问题，搁置）
+void multitree_search() {
+	MultiTree multi_tree(1000, 4, 50, 0.3);
 
 	auto beforeTime = std::chrono::steady_clock::now();
 	multi_tree.Run();
 	auto afterTime = std::chrono::steady_clock::now();
 
 	double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
-	std::cout << "总耗时：" << duration_second << "秒" << std::endl;*/
-	/***********************************************************************/
+	std::cout << "总耗时：" << duration_second << "秒" << std::endl;
+}
 
 
-	/***********************************************************************/
-	// single_imp的失败算例
-	// 目标：12
-	// 预计观测时间：1620s
-	// 问题：tG估计错误（84000s），与圈数严重不匹配时方程无解
-	// 目标：13
-	// 预计观测时间：1800s
-	// 问题：升降交正确，但圈数不匹配（NR=3，实际1圈就能观测），且脉冲很大（dv = 0.11047 -3.51521 -2.95107）
-	// 目标：14
-	// 预计观测时间：8400s（过点非常精确）
-	// 问题：升降交正确，但圈数不匹配（NR=3，实际2圈就能观测），且脉冲不接近0（dv = 0.00431052 -0.137163 -0.11515）
-	// 从13000s第二次观测目标12开始，估算基本正确
-	/*double m0 = 1000.0, mf, t0 = 0.0, tf;
+/***********************************************************************/
+// single_imp的失败算例
+// 目标：12
+// 预计观测时间：1620s
+// 问题：tG估计错误（84000s），与圈数严重不匹配时方程无解
+// 目标：13
+// 预计观测时间：1800s
+// 问题：升降交正确，但圈数不匹配（NR=3，实际1圈就能观测），且脉冲很大（dv = 0.11047 -3.51521 -2.95107）
+// 目标：14
+// 预计观测时间：8400s（过点非常精确）
+// 问题：升降交正确，但圈数不匹配（NR=3，实际2圈就能观测），且脉冲不接近0（dv = 0.00431052 -0.137163 -0.11515）
+// 从13000s第二次观测目标12开始，估算基本正确
+/***********************************************************************/
+void fail_example_singleimp() {
+	double m0 = 1000.0, mf, t0 = 0.0, tf;
 	double geo[2];
 	get_target_geogetic(0, 0.0, geo);
 	double dv[3];
@@ -63,30 +64,41 @@ int main() {
 
 	std::cout << "flag = " << flag << std::endl;
 	std::cout << "tf = " << tf << std::endl;
-	std::cout << "dv = " << dv[0] << " " << dv[1] << " " << dv[2] << std::endl;*/
+	std::cout << "dv = " << dv[0] << " " << dv[1] << " " << dv[2] << std::endl;
+}
 
+ 
+int main() {
+	const std::string input_filename1 = "../output_result/single_sat_21_R.bin";
+	const std::string output_filename1 = "../output_result/single_better_21_R.bin";
+	int threshold = 10;
 
-	/***********************************************************************/
-	// 输出不同根数的总观测次数
-	// create_db_single();
-	/***********************************************************************/
+	auto beforeTime = std::chrono::steady_clock::now();
+	if (filter_bin_file(input_filename1, output_filename1, threshold)) {
+		auto afterTime = std::chrono::steady_clock::now();
+		double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
+		std::cout << "1号数据库处理完成，总耗时：" << duration_second << "秒" << std::endl;
+	}
+	else {
+		std::cerr << "处理失败" << std::endl;
+	}
+	// 0.001s读取一条数据，预计4.16h跑完一个数据库
 
-	/***********************************************************************/
-	// 输出不同根数的特定目标观测次数
-	// 当前目标：ship
-	// 顺逆：0
-	//int target_id = 21;
-	//int branch = 1;
-	//std::string bra_str;
-	//if (branch) { bra_str = "R"; }		// Retrograde，逆行
-	//else { bra_str = "P"; }				// Prograde，顺行
-	//std::string id = std::to_string(target_id);
-	//std::string db_filepath = "../output_result/single_sat_" + id + "_" + bra_str + ".bin";
-	//std::ofstream fout0(db_filepath, std::ios::out | std::ios::binary);
-	//create_db_target(fout0, target_id);
-	// 16核，平均一条数据0.002s
-	// 500 * 200 * 150数据，预计8.33h完成
-	/***********************************************************************/
+	const std::string input_filename2 = "../output_result/single_sat_21_P.bin";
+	const std::string output_filename2 = "../output_result/single_better_21_P.bin";
+
+	beforeTime = std::chrono::steady_clock::now();
+	if (filter_bin_file(input_filename2, output_filename2, threshold)) {
+		auto afterTime = std::chrono::steady_clock::now();
+		double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
+		std::cout << "2号数据库处理完成，总耗时：" << duration_second << "秒" << std::endl;
+	}
+	else {
+		std::cerr << "处理失败" << std::endl;
+	}
+	// 0.001s读取一条数据，预计4.16h跑完一个数据库
+
+	// 16核，总计8.33h完成
 
 	return 0;
 }

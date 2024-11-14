@@ -150,3 +150,60 @@ void create_db_target(std::ofstream& fout0, const int& target_id) {
 	std::cout << "写入总耗时：" << duration_second << "秒" << std::endl;
 	// 预计0.01s写入完成
 }
+
+
+// 读取ship的数据库bin，筛掉观测少于阈值的数据
+bool filter_bin_file(const std::string& input_filename, const std::string& output_filename, int threshold) {
+	// 打开输入二进制文件
+	std::ifstream infile(input_filename);
+	if (!infile) {
+		std::cerr << "无法打开输入文件: " << input_filename << std::endl;
+		return false;
+	}
+
+	// 存储符合条件的数据
+	std::vector<std::vector<double>> filtered_lines;
+
+	while (true) {
+		// 每行数据
+		std::vector<double> line(7);
+		for (int i = 0; i < 7; ++i) {
+			if (!(infile >> line[i])) {
+				// 到文件末尾，退出循环
+				break;
+			}
+		}
+
+		// 如果读取到的数据不足7个，则认为是文件结束
+		if (line.size() < 7) {
+			break;
+		}
+
+		double seventh_element = line[6];
+		if (seventh_element >= threshold) {
+			filtered_lines.push_back(line);
+		}
+	}
+
+	// 关闭输入文件
+	infile.close();
+
+	// 打开输出二进制文件
+	std::ofstream outfile(output_filename);
+	if (!outfile) {
+		std::cerr << "无法打开输出文件: " << output_filename << std::endl;
+		return false;
+	}
+
+	for (const auto& line : filtered_lines) {
+		for (int i = 0; i < 7; ++i) {
+			outfile << line[i] << ' ';
+		}
+		outfile << '\n';
+	}
+
+	// 关闭输出文件
+	outfile.close();
+
+	return true;
+}

@@ -27,3 +27,6 @@ void create_db_single(std::ofstream& fout0);
 // 计算每一个轨道根数两天之内进行的海上观测总次数
 int single_sat_target(const double* coe0, const int& target_id);
 void create_db_target(std::ofstream& fout0, const int& target_id);
+
+// 读取ship的数据库bin，筛掉观测少于阈值的数据
+bool filter_bin_file(const std::string& input_filename, const std::string& output_filename, int threshold);
