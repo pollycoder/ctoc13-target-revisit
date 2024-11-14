@@ -110,7 +110,7 @@ int main() {
 	double f;
 
 	auto beforeTime = std::chrono::steady_clock::now();
-	nlopt_main(obj_single_sat, para, X, f, X.size());
+	DE_parallel(obj_single_sat, para, X, f, X.size());
 	auto afterTime = std::chrono::steady_clock::now();
 	double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
 	std::cout << "×ÜºÄÊ±£º" << duration_second << "Ãë" << std::endl;
