@@ -103,8 +103,7 @@ void read_db() {
 
 }
 
- 
-int main() {
+void single_sat_opt() {
 	double para[7] = { sats_coe0[0][0], sats_coe0[0][1], sats_coe0[0][2], sats_coe0[0][3], sats_coe0[0][4], sats_coe0[0][5], 86400.0 };
 	std::vector<double> X = { 0.5, 0.5, 0.5, 0.5 };
 	double f;
@@ -125,5 +124,22 @@ int main() {
 	for (auto iter = max_revisit.begin(); iter != max_revisit.end(); iter++) {
 		std::cout << *iter << std::endl;
 	}
+
+	// 种群：700
+	// 迭代次数：2000
+	// 0.34s目标函数运行一次
+	// 16核，预计8.26h完成
+}
+ 
+int main() {
+
+	// 核数：16核
+	// 两个任务串行：
+	// 任务1：生成精简ship数据库（顺行、逆行），合计8.3h
+	// 任务2：单颗星优化，预计8.26h
+	// 开始时间：00:00
+	// 验收时间：任务1 - 8:30，任务2 - 17:30
+	read_db();
+	//single_sat_opt();
 	return 0;
 }
