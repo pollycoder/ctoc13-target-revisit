@@ -60,4 +60,4 @@ void get_revisit(const std::vector<double>& X, const double* para, std::vector<d
 //		h：轨道高度，200km-1000km
 //		dv：脉冲不大于1km/s（扰动范围注定不会发生此问题，忽略）
 double obj_multi_sat(const std::vector<double>& X, std::vector<double>& grad, void* f_data);
-void get_revisit(const std::vector<double>& X, const double* para, std::vector<double>& max_revisit, std::vector<double>& t_imp, std::vector<double*>& dv, double& score);
+void get_revisit(const std::vector<double>& X, const double* para, std::vector<double>& max_revisit, std::vector<double>& t_imp, std::vector<std::vector<double>>& dv, double& score);

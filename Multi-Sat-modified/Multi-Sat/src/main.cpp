@@ -152,14 +152,14 @@ void multi_sat_opt() {
 
 	// DE global
 	auto beforeTime = std::chrono::steady_clock::now();
-	DE_parallel(obj_multi_sat, para, X, f, X.size(), 600, 2000, 100);
+	DE_parallel(obj_multi_sat, para, X, f, X.size(), 40, 2000, 100);
 	auto afterTime = std::chrono::steady_clock::now();
 	double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
 	std::cout << "×ÜºÄÊ±£º" << duration_second << "Ãë" << std::endl;
 
 	std::vector<double> max_revisit;
 	std::vector<double> t_imp;
-	std::vector<double*> dv;
+	std::vector<std::vector<double>> dv;
 	get_revisit(X, para, max_revisit, t_imp, dv, f);
 
 	std::ofstream fout0("../output_result/result.txt");

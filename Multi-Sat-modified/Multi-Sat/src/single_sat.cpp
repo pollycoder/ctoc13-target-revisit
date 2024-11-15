@@ -286,13 +286,13 @@ void get_revisit(const std::vector<double>& X, const double* para, std::vector<d
 double obj_multi_sat(const std::vector<double>& X, std::vector<double>& grad, void* f_data) {
 	const double* para = static_cast<double*>(f_data);
 	double f;
-	std::vector<double*> dv_list;
+	std::vector<std::vector<double>> dv_list;
 	std::vector<double> t_imp_list, max_revisit;
 	get_revisit(X, para, max_revisit, t_imp_list, dv_list, f);
 	return f;
 }
 
-void get_revisit(const std::vector<double>& X, const double* para, std::vector<double>& max_revisit, std::vector<double>& t_imp, std::vector<double*>& dv, double& score) {
+void get_revisit(const std::vector<double>& X, const double* para, std::vector<double>& max_revisit, std::vector<double>& t_imp, std::vector<std::vector<double>>& dv, double& score) {
 	const int paranum_group = 7;
 	const int varnum_group = 4;
 	
@@ -313,10 +313,11 @@ void get_revisit(const std::vector<double>& X, const double* para, std::vector<d
 
 		get_imp_trajectory(flag, rv0_current, coe0_current, rv_imp_current, t_imp_current, dv_current, peri, apo);
 		if (peri < 201.0 || apo > 999.0) {
-			score += (std::max(apo, 999.0) - apo) * (std::max(apo, 999.0) - apo);
-			score += (std::min(peri, 201.0) - peri) * (std::min(peri, 201.0) - peri);
+			score = penalty;
+			return;
 		}
 
+		const std::vector<double> dv_current_vec = { dv_current[0], dv_current[1], dv_current[2] };
 		std::vector <std::vector<double>> visible_list_current;
 		std::vector<std::vector<double>> append_list_current;
 		AccessPointObjects(rv0_current, 0.0, t_imp_current, 60.0, 21, visible_list_current);
@@ -327,6 +328,7 @@ void get_revisit(const std::vector<double>& X, const double* para, std::vector<d
 		}
 
 		t_imp.push_back(t_imp_current);
+		dv.push_back(dv_current_vec);
 	}
 
 	for (int i = 0; i < 21; i++) {
