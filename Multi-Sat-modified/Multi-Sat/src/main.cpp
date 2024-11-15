@@ -104,42 +104,91 @@ void read_db() {
 }
 
 void single_sat_opt() {
-	double para[7] = { sats_coe0[0][0], sats_coe0[0][1], sats_coe0[0][2], sats_coe0[0][3], sats_coe0[0][4], sats_coe0[0][5], 86400.0 };
+	double para[7] = { sats_coe0[1][0], sats_coe0[1][1], sats_coe0[1][2], sats_coe0[1][3], sats_coe0[1][4], sats_coe0[1][5], 86400.0 };
 	std::vector<double> X = { 0.5, 0.5, 0.5, 0.5 };
 	double f;
 
+	// DE global
 	auto beforeTime = std::chrono::steady_clock::now();
-	DE_parallel(obj_single_sat, para, X, f, X.size(), 700, 2000, 100);
+	DE_parallel(obj_single_sat, para, X, f, X.size(), 100, 2000, 100);
 	auto afterTime = std::chrono::steady_clock::now();
 	double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
-	std::cout << "总耗时：" << duration_second << "秒" << std::endl;
-	std::cout << f << std::endl;
-	std::cout << "X = " << X[0] << " " << X[1] << " " << X[2] << " " << X[3] << std::endl;
+	std::cout << "DE总耗时：" << duration_second << "秒" << std::endl;
 
 	std::vector<double> max_revisit;
 	double t_imp, dv[3];
 	get_revisit(X, para, max_revisit, t_imp, dv, f);
+
+	std::ofstream fout0("../output_result/result.txt");
 	std::cout << "t = " << t_imp << std::endl;
 	std::cout << "dv = " << dv[0] << " " << dv[1] << " " << dv[2] << std::endl;
+
+	fout0 << sats_coe0[0][0] << " " << sats_coe0[0][1] << " " << sats_coe0[0][2] << " " << sats_coe0[0][3] << " " << sats_coe0[0][4] << " " << sats_coe0[0][5] << std::endl;
+	fout0 << t_imp << " " << dv[0] << " " << dv[1] << " " << dv[2] << std::endl;
+	int index = 0;
 	for (auto iter = max_revisit.begin(); iter != max_revisit.end(); iter++) {
+		index++;
+		fout0 << "Target" << index << ": " << *iter << std::endl;
 		std::cout << *iter << std::endl;
 	}
 
-	// 种群：700
+	// 种群：100
 	// 迭代次数：2000
-	// 0.34s目标函数运行一次
-	// 16核，预计8.26h完成
+	// 0.025s目标函数运行一次
+	// 16核，预计0.4h完成
+}
+
+void multi_sat_opt() {
+	double para[TreeNum * 7];
+	for (int i = 0; i < TreeNum; i++) {
+		for (int j = 0; j < 6; j++) {
+			para[i * 7 + j] = sats_coe0[i][j];
+		}
+		para[i * 7 + 6] = 86400.0;
+	}
+	std::vector<double> X;
+	for (int i = 0; i < TreeNum * 4; i++) X.push_back(0.5);
+	double f;
+
+	// DE global
+	auto beforeTime = std::chrono::steady_clock::now();
+	DE_parallel(obj_multi_sat, para, X, f, X.size(), 600, 2000, 100);
+	auto afterTime = std::chrono::steady_clock::now();
+	double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
+	std::cout << "总耗时：" << duration_second << "秒" << std::endl;
+
+	std::vector<double> max_revisit;
+	std::vector<double> t_imp;
+	std::vector<double*> dv;
+	get_revisit(X, para, max_revisit, t_imp, dv, f);
+
+	std::ofstream fout0("../output_result/result.txt");
+	for (int i = 0; i < TreeNum; i++) {
+		fout0 << sats_coe0[i][0] << " " << sats_coe0[i][1] << " " << sats_coe0[i][2] << " " << sats_coe0[i][3] << " " << sats_coe0[i][4] << " " << sats_coe0[i][5] << std::endl;
+		fout0 << t_imp[i] << " " << dv[i][0] << " " << dv[i][1] << " " << dv[i][2] << std::endl;
+	}
+
+	int index = 0;
+	for (auto iter = max_revisit.begin(); iter != max_revisit.end(); iter++) {
+		index++;
+		fout0 << "Target" << index << ": " << *iter << std::endl;
+		std::cout << "Target" << index << ": " << *iter << std::endl;
+	}
+
+	// 种群：100
+	// 迭代次数：2000
+	// 0.025s目标函数运行一次
+	// 16核，预计0.4h完成
 }
  
 int main() {
 
 	// 核数：16核
-	// 两个任务串行：
-	// 任务1：生成精简ship数据库（顺行、逆行），合计8.3h
-	// 任务2：单颗星优化，预计8.26h
+	// 任务：
+	//	1. 单颗星优化，预计8.26h
 	// 开始时间：00:00
 	// 验收时间：任务1 - 8:30，任务2 - 17:30
-	read_db();
-	//single_sat_opt();
+	//read_db();
+	multi_sat_opt();
 	return 0;
 }

@@ -6,6 +6,7 @@
 #include <fstream>
 #include "max_reseetime.h"
 #include<numeric>
+#include <algorithm>
 
 
 int single_sat_score(const double* coe0) {
@@ -211,8 +212,9 @@ bool filter_bin_file(const std::string& input_filename, const std::string& outpu
 }
 
 
-
-void pert_single_sat(const std::vector<double>& X, const double* para, double& t, double* dv) {
+// Tool functions (static)
+static void pert_single_sat(const std::vector<double>& X, const double* para, double& t, double* dv, double* coe0) {
+	for (int i = 0; i < 6; i++) coe0[i] = para[i];
 	const double dt = 43200.0;										// 时间最大扰动：前后6小时
 	const double d_imp = 1.0;										// 脉冲分量最大扰动：上下0.5km/s
 	t = para[6] + (X[0] - 0.5) * dt;
@@ -221,41 +223,41 @@ void pert_single_sat(const std::vector<double>& X, const double* para, double& t
 	dv[2] = (X[3] - 0.5) * d_imp;
 }
 
-
-double obj_single_sat(const std::vector<double>& X, std::vector<double>& grad, void* f_data) {
-	const double* para = static_cast<double*>(f_data);
-
-	
-	double t_impulse, dv[3], mean;
-	std::vector<double> max_revisit;
-	get_revisit(X, para, max_revisit, t_impulse, dv, mean);
-	
-	return mean;
-}
-
-void get_revisit(const std::vector<double>& X, const double* para, std::vector<double>& max_revisit, double& t_imp, double* dv, double& score) {
-	pert_single_sat(X, para, t_imp, dv);
-	const double coe0[6] = { para[0], para[1], para[2], para[3], para[4], para[5] };
-	double rv0[6], rv_imp[6], coe_imp[6], a, e, peri, apo;
-	int flag;
+static void get_imp_trajectory(int& flag, double* rv0, const double* coe0, double* rv_imp, double& t_imp, double* dv, double& peri, double& apo)
+{
 	coe2rv(flag, rv0, coe0, mu_km_s);
-
-	std::vector <std::vector<double>> visible_list;
-	AccessPointObjects(rv0, 0.0, t_imp, 60.0, 21, visible_list);
 	propagate_j2(rv0, rv_imp, 0.0, t_imp, 1.0e-5, 1.0e-7);
-
 	for (int i = 0; i < 3; i++) rv_imp[i + 3] += dv[i];
+	double coe_imp[6], a, e;
 	rv2coe(flag, coe_imp, rv_imp, mu_km_s);
 	a = coe_imp[0];
 	e = coe_imp[1];
 	peri = a * (1 - e) - Re_km;
 	apo = a * (1 + e) - Re_km;
+}
+
+double obj_single_sat(const std::vector<double>& X, std::vector<double>& grad, void* f_data) {
+	const double* para = static_cast<double*>(f_data);
+	double t_impulse, dv[3], mean;
+	std::vector<double> max_revisit;
+	get_revisit(X, para, max_revisit, t_impulse, dv, mean);
+
+	return mean;
+}
+
+void get_revisit(const std::vector<double>& X, const double* para, std::vector<double>& max_revisit, double& t_imp, double* dv, double& score) {
+	double coe0[6], rv0[6], rv_imp[6], peri, apo;
+	pert_single_sat(X, para, t_imp, dv, coe0);
+	int flag;
+	get_imp_trajectory(flag, rv0, coe0, rv_imp, t_imp, dv, peri, apo);
 	if (peri < 201.0 || apo > 999.0) {
 		score =  penalty;
 		return;
 	}
 
+	std::vector <std::vector<double>> visible_list;
 	std::vector<std::vector<double>> append_list;
+	AccessPointObjects(rv0, 0.0, t_imp, 60.0, 21, visible_list);
 	AccessPointObjects(rv_imp, t_imp, 2.0 * 86400.0, 60.0, 21, append_list);
 	for (int i = 0; i < 21; i++) {
 		visible_list[i].insert(visible_list[i].end(), append_list[i].begin(), append_list[i].end());
@@ -265,4 +267,73 @@ void get_revisit(const std::vector<double>& X, const double* para, std::vector<d
 
 	double sum = std::accumulate(max_revisit.begin(), max_revisit.end(), 0.0);
 	score = sum / 21.0;
+	
+}
+
+
+// 优化多颗星单次机动
+// 输入参数（7个一循环）：
+//		f_data[0-5]：轨道根数
+//		f_data[6]：脉冲时间
+// 优化变量（4个一循环）：
+//		t：脉冲时间，初值暂定为1天，扰动范围6小时
+//		dv[3]：脉冲3个分量，初值为0，扰动范围0.5km/s
+// 目标：
+//		t_gap_ave：平均每个目标的重访时间
+// 约束：
+//		h：轨道高度，200km-1000km
+//		dv：脉冲不大于1km/s（扰动范围注定不会发生此问题，忽略）
+double obj_multi_sat(const std::vector<double>& X, std::vector<double>& grad, void* f_data) {
+	const double* para = static_cast<double*>(f_data);
+	double f;
+	std::vector<double*> dv_list;
+	std::vector<double> t_imp_list, max_revisit;
+	get_revisit(X, para, max_revisit, t_imp_list, dv_list, f);
+	return f;
+}
+
+void get_revisit(const std::vector<double>& X, const double* para, std::vector<double>& max_revisit, std::vector<double>& t_imp, std::vector<double*>& dv, double& score) {
+	const int paranum_group = 7;
+	const int varnum_group = 4;
+	
+	std::vector<std::vector<double>> visible_list;
+	visible_list.resize(21);
+	int flag;
+
+	for (int i = 0; i < TreeNum; i++) {
+		std::vector<double> X_current;
+		for (int j = 0; j < varnum_group; j++) X_current.push_back(X[i * varnum_group + j]);
+
+		double coe0_current[6], rv0_current[6], t_imp_current,
+			   dv_current[3], rv_imp_current[6], peri, apo;
+		double para_current[paranum_group];
+		for (int j = 0; j < paranum_group; j++) para_current[j] = para[i * paranum_group + j];
+
+		pert_single_sat(X_current, para_current, t_imp_current, dv_current, coe0_current);
+
+		get_imp_trajectory(flag, rv0_current, coe0_current, rv_imp_current, t_imp_current, dv_current, peri, apo);
+		if (peri < 201.0 || apo > 999.0) {
+			score += (std::max(apo, 999.0) - apo) * (std::max(apo, 999.0) - apo);
+			score += (std::min(peri, 201.0) - peri) * (std::min(peri, 201.0) - peri);
+		}
+
+		std::vector <std::vector<double>> visible_list_current;
+		std::vector<std::vector<double>> append_list_current;
+		AccessPointObjects(rv0_current, 0.0, t_imp_current, 60.0, 21, visible_list_current);
+		AccessPointObjects(rv_imp_current, t_imp_current, 2.0 * 86400.0, 60.0, 21, append_list_current);
+		for (int i = 0; i < 21; i++) {
+			visible_list[i].insert(visible_list[i].end(), visible_list_current[i].begin(), visible_list_current[i].end());
+			visible_list[i].insert(visible_list[i].end(), append_list_current[i].begin(), append_list_current[i].end());
+		}
+
+		t_imp.push_back(t_imp_current);
+	}
+
+	for (int i = 0; i < 21; i++) {
+		std::sort(visible_list[i].begin(), visible_list[i].end());
+	}
+
+	max_reseetime(visible_list, max_revisit);
+	score = std::accumulate(max_revisit.begin(), max_revisit.end(), 0.0);
+	score /= 21.0;
 }
