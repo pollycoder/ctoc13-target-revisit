@@ -24,6 +24,7 @@
     <ClCompile Include="src\tutorial_connect.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="bin\ATKConnectorDll.h" />
     <ClInclude Include="include\ATKConnectorDll.h" />
     <ClInclude Include="include\ATKConnectorlib.h" />
     <ClInclude Include="src\ResultData.h" />

@@ -217,7 +217,8 @@ static void pert_single_sat(const std::vector<double>& X, const double* para, do
 	for (int i = 0; i < 6; i++) coe0[i] = para[i];
 	const double dt = 43200.0;										// 时间最大扰动：前后6小时
 	const double d_imp = 1.0;										// 脉冲分量最大扰动：上下0.5km/s
-	t = para[6] + (X[0] - 0.5) * dt;
+	//t = para[6] + (X[0] - 0.5) * dt;
+	t = X[0] * 86400.0 * 2.0;
 	dv[0] = (X[1] - 0.5) * d_imp;
 	dv[1] = (X[2] - 0.5) * d_imp;
 	dv[2] = (X[3] - 0.5) * d_imp;
@@ -295,6 +296,7 @@ double obj_multi_sat(const std::vector<double>& X, std::vector<double>& grad, vo
 void get_revisit(const std::vector<double>& X, const double* para, std::vector<double>& max_revisit, std::vector<double>& t_imp, std::vector<std::vector<double>>& dv, double& score) {
 	const int paranum_group = 7;
 	const int varnum_group = 4;
+	score = 0.0;
 	
 	std::vector<std::vector<double>> visible_list;
 	visible_list.resize(21);
@@ -312,10 +314,12 @@ void get_revisit(const std::vector<double>& X, const double* para, std::vector<d
 		pert_single_sat(X_current, para_current, t_imp_current, dv_current, coe0_current);
 
 		get_imp_trajectory(flag, rv0_current, coe0_current, rv_imp_current, t_imp_current, dv_current, peri, apo);
-		if (peri < 201.0 || apo > 999.0) {
-			score = penalty;
-			return;
-		}
+		
+		double lb = 201.0, ub = 999.0;
+		score += (std::max(apo, ub) - ub) * (std::max(apo, ub) - ub);
+		score += (std::min(peri, lb) - lb) * (std::min(peri, lb) - lb);
+		
+		
 
 		const std::vector<double> dv_current_vec = { dv_current[0], dv_current[1], dv_current[2] };
 		std::vector <std::vector<double>> visible_list_current;
@@ -336,6 +340,12 @@ void get_revisit(const std::vector<double>& X, const double* para, std::vector<d
 	}
 
 	max_reseetime(visible_list, max_revisit);
-	score = std::accumulate(max_revisit.begin(), max_revisit.end(), 0.0);
-	score /= 21.0;
+	for (int i = 0; i < TargetNum; i++) {
+		if (i != TargetNum - 1) {
+			score -= 6.0 / std::max(6.0, max_revisit[i]) * 4.0;					// 地面：小于6h，记满分，否则减分
+		}
+		else {
+			score -= 3.0 / std::max(3.0, max_revisit[i]) * 20.0;					// ship：小于3h，记满分，否则减分
+		}
+	}
 }

@@ -110,7 +110,7 @@ void single_sat_opt() {
 
 	// DE global
 	auto beforeTime = std::chrono::steady_clock::now();
-	DE_parallel(obj_single_sat, para, X, f, X.size(), 100, 2000, 100);
+	DE_parallel(obj_single_sat, para, X, f, X.size(), 50, 5000, 100);
 	auto afterTime = std::chrono::steady_clock::now();
 	double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
 	std::cout << "DE总耗时：" << duration_second << "秒" << std::endl;
@@ -135,7 +135,7 @@ void single_sat_opt() {
 	// 种群：100
 	// 迭代次数：2000
 	// 0.025s目标函数运行一次
-	// 16核，预计0.4h完成
+	// 16核，预计1.5h完成
 }
 
 void multi_sat_opt() {
@@ -152,7 +152,8 @@ void multi_sat_opt() {
 
 	// DE global
 	auto beforeTime = std::chrono::steady_clock::now();
-	DE_parallel(obj_multi_sat, para, X, f, X.size(), 40, 2000, 100);
+	DE_parallel(obj_multi_sat, para, X, f, X.size(), 150, 5000, 50);
+	//nlopt_main(obj_multi_sat, para, X, f, X.size(), 10 * X.size());
 	auto afterTime = std::chrono::steady_clock::now();
 	double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
 	std::cout << "总耗时：" << duration_second << "秒" << std::endl;
@@ -175,19 +176,19 @@ void multi_sat_opt() {
 		std::cout << "Target" << index << ": " << *iter << std::endl;
 	}
 
-	// 种群：100
-	// 迭代次数：2000
-	// 0.025s目标函数运行一次
-	// 16核，预计0.4h完成
+	// 种群：150
+	// 迭代次数：5000
+	// 0.016s目标函数运行一次
+	// 16核，预计2h完成
 }
  
 int main() {
 
 	// 核数：16核
 	// 任务：
-	//	1. 单颗星优化，预计8.26h
-	// 开始时间：00:00
-	// 验收时间：任务1 - 8:30，任务2 - 17:30
+	//	1. 7颗星优化，预计8.7h
+	// 开始时间：1:20
+	// 验收时间：10:30
 	//read_db();
 	multi_sat_opt();
 	return 0;
