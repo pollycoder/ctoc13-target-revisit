@@ -867,6 +867,7 @@ void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& 
 	flag = 0;
 	double target_geo[2];
 	double lambda, phi;
+	double lambda_temp, phi_temp;
 	if (target_id != 20) {
 		get_target_geogetic(target_id, tf, target_geo);
 		lambda = target_geo[1];
@@ -881,17 +882,33 @@ void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& 
 		lambda = target_geo[1];
 	}
 	
-	double m0 = 1000.0, mf;
+	double m0 = 1000.0, mf; 
 
 	//注意张刚论文的方法里，tf是飞行时长，不是时刻
+	//对于地面目标，放宽打靶经纬度，先计算地心夹角范围，再根据这个给经度和纬度都撒网格，碰到可行解就结束
+	//对于船，纬度已经比较近似
 	if (target_id != 20) {
-		single_imp(m0, t0, RV0, lambda, phi, 1, flag, mf, tf, dv, NR, branch);
-
-		//J2 Lambert打靶,一圈以两小时记
-		/*tf = NR * 4000.0;
+		// 计算地心角范围beta
 		double R0[3] = { RV0[0], RV0[1], RV0[2] };
-		double h = V_Norm2(R0, 3) - Re_km;
-		single_imp_J2Lambert(dv, RVf, flag, RV0, t0, tf, lambda, phi, h, NR, branch);*/
+		double r = V_Norm2(R0, 3);
+		double gamma = 20.0 * D2R;
+		double beta = asin(r * sin(gamma) / Re_km) - gamma;
+		int mesh_size = 10;
+		for (int i = 0; i < mesh_size; i++) {
+			lambda_temp = lambda + 2.0 * beta / mesh_size * (i - mesh_size / 2.0);
+			int temp = 0;;
+			for (int j = 0; j < mesh_size; j++) {
+				phi_temp = phi + 2.0 * beta / mesh_size * (j - mesh_size / 2.0);
+				single_imp(m0, t0, RV0, lambda_temp, phi_temp, 1, flag, mf, tf, dv, NR, branch);
+				if (flag == 1) { 
+					temp = 1;
+					break; 
+				}
+			}
+			if (temp == 1) {
+				break;
+			}
+		}
 	}
 	else {
 		single_imp_ship(m0, t0, RV0, lambda, phi, 1, flag, mf, tf, dv, NR, branch);
@@ -922,7 +939,7 @@ void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& 
 
 	double target_R[3];
 	get_target_R(target_id, tf, target_R);
-	bool ifVisible = is_target_visible(RVf, target_R, 19.9 * D2R);
+	bool ifVisible = is_target_visible(RVf, target_R, 20.0 * D2R);
 
 	if (!ifVisible) {
 		flag = 0;
