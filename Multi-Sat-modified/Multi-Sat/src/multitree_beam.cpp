@@ -28,33 +28,31 @@ bool sort_by_out(const OutputResult& a, const OutputResult& b)
 ****************************************************************************/
 inline bool MultiTree::SortTNC(const TNC& a, const TNC& b)
 {
-	if (a.op_index_.total_ship_num > b.op_index_.total_ship_num) {
-		// 优先看ship
-		return true;
-	}
-	else if (a.op_index_.total_ship_num == b.op_index_.total_ship_num) {
-		// ship次数保证相等，看平均每次的观测时间
-		double a_ave_t = a.op_index_.time_cost / a.op_index_.observed_num_;
-		double b_ave_t = b.op_index_.time_cost / b.op_index_.observed_num_;
-		if (a_ave_t < b_ave_t) {
-			return true;
-		}
-		else if (a_ave_t == b_ave_t) {
-			// 平均时间也相等，比脉冲
+	//if (a.op_index_.total_ship_num > b.op_index_.total_ship_num) {
+	//	// 优先看ship
+	//	return true;
+	//}
+	//else if (a.op_index_.total_ship_num == b.op_index_.total_ship_num) {
+	//	// ship次数保证相等，看平均每次的观测时间
+	//	double a_ave_t = a.op_index_.time_cost / a.op_index_.observed_num_;
+	//	double b_ave_t = b.op_index_.time_cost / b.op_index_.observed_num_;
+	//	if (a_ave_t < b_ave_t) {
+	//		return true;
+	//	}
+	//	else if (a_ave_t == b_ave_t) {
+	//		// 平均时间也相等，比脉冲
 			if (a.op_index_.total_impulse_ < b.op_index_.total_impulse_) {
 				return true;
 			}
 			else {
 				return false;
 			}
-		}
+		/*}
 		else {
 			return false;
-		}
-	}
-	else { return false; }
-		
-	
+		}*/
+	/*}
+	else { return false; }*/
 }
 
 /****************************************************************************
@@ -349,13 +347,31 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 {
 	for (int j = 0; j < TargetNum; j++)
 	{
+		int last_id = node->problem_.node_info_.back().point_id_;
+		if (visited[j] > 0 || last_id == j + 1)
+		{
+			continue;
+		}
+		double target_r0[3], t, rv_sat[6];
+		t = node->problem_.node_info_.back().time_acc_;
+		memcpy(rv_sat, node->problem_.node_info_.back().rv_acc_, 6 * sizeof(double));
+		get_target_R(j, t, target_r0);
+		bool ifVisible = is_target_visible(rv_sat, target_r0, 19.9 * D2R);
+		if (ifVisible) {
+			Node_problem temp;
+			OutputResult temp_out; //机动的信息，机动后的信息
+			temp_out.action_ = 2;
+			temp_out.time_acc_ = t;
+			memcpy(temp_out.rv_acc_, target_r0, 3 * sizeof(double));
+			for (int i = 0; i < 3; i++) temp_out.dv_[i] = 0.0;
+			temp_out.point_id_ = j + 1;
+			temp.node_info_.push_back(temp_out);
+			child_node_problems.push_back(temp);
+			continue;
+		}
+
 		for (int bra = 0; bra < 2; bra++) {
-			for (int NR = 0; NR < 5; NR++) {
-				int last_id = node->problem_.node_info_.back().point_id_;
-				if (visited[j] > 0 || last_id == j + 1)
-				{
-					continue;
-				}
+			for (int NR = 1; NR < 4; NR++) {
 				double t0, h0, rv0[6], coe0[6], lambda0, phi0, tf, dv[3], a, e, hmin, hmax;
 				int flag;
 
@@ -500,7 +516,7 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 
 	bool ifsync = false;
 	if (tf_max - tf_min < 10800.0 && tf_min > 0.0) {
-		//ifsync = true;
+		ifsync = true;
 	}
 
 	// 如果有目标点的最大重访时间已经不可能满足要求，立即停止扩展

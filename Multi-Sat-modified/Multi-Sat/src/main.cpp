@@ -54,7 +54,7 @@ void multitree_search() {
 void fail_example_singleimp() {
 	double m0 = 1000.0, mf, t0 = 0.0, tf;
 	double geo[2];
-	get_target_geogetic(0, 0.0, geo);
+	get_target_geogetic(11, 0.0, geo);
 	double dv[3];
 	int NR = 4, branch = 0, flag;
 	double coe_00[6] = { sats_coe0[0][0], sats_coe0[0][1], sats_coe0[0][2], sats_coe0[0][3], sats_coe0[0][4], sats_coe0[0][5] };
@@ -189,10 +189,9 @@ int main() {
 
 	// 核数：16核
 	// 任务：
-	//	1. 8颗星验证，预计8h
-	// 开始时间：21:50
-	// 验收时间：8:30
-	//read_db();
-	multi_sat_opt();
+	//	1. 树搜索，
+	// 开始时间：1:20
+	// 验收时间：10:30
+	multitree_search();
 	return 0;
 }
