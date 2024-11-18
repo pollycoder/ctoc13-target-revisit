@@ -20,6 +20,7 @@
  */
 bool is_target_visible(const double* rv_sat, const double* rv_target, double half_cone_angle_rad);
 
+
 /**
  * @brief 计算多个地面目标在一段时间内对卫星的可见性。
  *
@@ -43,6 +44,33 @@ void AccessPointObjects(
     std::vector<std::vector<double>>& results,    // 输出：每个目标的可见时间列表
     const double half_cone_angle = 20.0 * D2R
 );
+
+
+
+/**
+ * @brief 计算多个指定地面目标在一段时间内对某颗卫星的可见性。
+ *
+ * 该函数从起始时间 t_start 开始，以时间步长 dt 对卫星轨道进行传播，直到结束时间 t_end。
+ * 在每个时间步，计算每个地面目标是否对卫星可见，并将结果存储在 results 向量中。
+ * results 向量的每个元素对应一个目标，包含该目标可见的时间列表。
+ *
+ * @param rv0 卫星初始状态向量（位置和速度），ECI坐标系，长度为6。
+ * @param t_start 起始时间，单位：秒。
+ * @param t_end 结束时间，单位：秒。
+ * @param dt 时间步长，单位：秒。
+ * @param num_targets 地面目标的数量。
+ * @param results 输出参数，用于存储每个目标的可见时间列表。
+ */
+void AccessPointCertainObjects(
+    const double rv0[6],                         // 初始卫星状态向量（位置和速度）
+    double t_start,                              // 起始时间，单位：秒
+    double t_end,                                // 结束时间，单位：秒
+    double dt,                                   // 时间步长，单位：秒
+    const std::vector<int>& target_ids,          // 指定的地面目标编号向量
+    std::vector<std::vector<double>>& results,    // 输出：每个目标的可见时间列表
+    const double half_cone_angle = 20.0 * D2R
+);
+
 
 /**
  * @brief 计算多个卫星对多个地面目标在一段时间内的可见性。

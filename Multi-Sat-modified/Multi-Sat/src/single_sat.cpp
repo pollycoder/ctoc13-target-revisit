@@ -216,18 +216,18 @@ bool filter_bin_file(const std::string& input_filename, const std::string& outpu
 static void pert_single_sat(const std::vector<double>& X, const double* para, double& t, double* dv, double* coe0) {
 	for (int i = 0; i < 6; i++) coe0[i] = para[i];
 	const double dt = 43200.0;										// 时间最大扰动：前后6小时
-	const double d_imp = 1.0;										// 脉冲分量最大扰动：上下0.5km/s
+	const double d_imp = 2.0 / sqrt(3);										// 脉冲分量最大扰动：上下0.5km/s
 	//t = para[6] + (X[0] - 0.5) * dt;
-	t = X[0] * 86400.0 * 2.0;
+	t = X[0] * 172800.0;
 	dv[0] = (X[1] - 0.5) * d_imp;
 	dv[1] = (X[2] - 0.5) * d_imp;
 	dv[2] = (X[3] - 0.5) * d_imp;
 }
 
-static void get_imp_trajectory(int& flag, double* rv0, const double* coe0, double* rv_imp, double& t_imp, double* dv, double& peri, double& apo)
+void get_imp_trajectory(int& flag, double* rv0, const double* coe0, double* rv_imp, double& t_imp, double* dv, double& peri, double& apo)
 {
 	coe2rv(flag, rv0, coe0, mu_km_s);
-	propagate_j2(rv0, rv_imp, 0.0, t_imp, 1.0e-5, 1.0e-7);
+	propagate_j2(rv0, rv_imp, 0.0, t_imp);
 	for (int i = 0; i < 3; i++) rv_imp[i + 3] += dv[i];
 	double coe_imp[6], a, e;
 	rv2coe(flag, coe_imp, rv_imp, mu_km_s);
@@ -349,3 +349,90 @@ void get_revisit(const std::vector<double>& X, const double* para, std::vector<d
 		}
 	}
 }
+
+
+double obj_multi_sat_certain(const std::vector<double>& X, std::vector<double>& grad, void* f_data) {
+	const int* para = static_cast<int*>(f_data);
+	double f;
+	std::vector<std::vector<double>> dv_list;
+	std::vector<double> t_imp_list, max_revisit;
+	get_revisit_certain(X, para, max_revisit, t_imp_list, dv_list, f);
+	return f;
+}
+
+void get_revisit_certain(const std::vector<double>& X, const int* para, std::vector<double>& max_revisit,
+	std::vector<double>& t_imp, std::vector<std::vector<double>>& dv, double& score) {
+	const int varnum_group = 4;
+	score = 0.0;
+
+	std::vector<int> sat_id_imp;
+	for (int i = 0; i < impNum; i++) sat_id_imp.push_back(para[i]);
+
+	std::vector<std::vector<double>> visible_list;
+	visible_list.resize(21);
+	int flag;
+
+	int imp_num = 0;
+	for (int i = 0; i < TreeNum; i++) {
+		if (std::find(sat_id_imp.begin(), sat_id_imp.end(), i) != sat_id_imp.end()) {		// 带机动的星
+			std::vector<double> X_current;
+			for (int j = 0; j < varnum_group; j++) X_current.push_back(X[imp_num * varnum_group + j]);
+
+			double coe0_current[6], rv0_current[6], t_imp_current,
+				dv_current[3], rv_imp_current[6], peri, apo;
+
+			double p[6];
+			memcpy(p, sats_coe0[i], 6 * sizeof(double));
+			pert_single_sat(X_current, p, t_imp_current, dv_current, coe0_current);
+
+			get_imp_trajectory(flag, rv0_current, coe0_current, rv_imp_current, t_imp_current, dv_current, peri, apo);
+
+			double lb = 200.0, ub = 1000.0;
+			score += (std::max(apo, ub) - ub) * (std::max(apo, ub) - ub);
+			score += (std::min(peri, lb) - lb) * (std::min(peri, lb) - lb);
+
+			const std::vector<double> dv_current_vec = { dv_current[0], dv_current[1], dv_current[2] };
+			std::vector <std::vector<double>> visible_list_current;
+			std::vector<std::vector<double>> append_list_current;
+			AccessPointObjects(rv0_current, 0.0, t_imp_current, 10.0, 21, visible_list_current);
+			AccessPointObjects(rv_imp_current, t_imp_current, 2.0 * 86400.0, 10.0, 21, append_list_current);
+			for (int j = 0; j < 21; j++) {
+				visible_list[j].insert(visible_list[j].end(), visible_list_current[j].begin(), visible_list_current[j].end());
+				visible_list[j].insert(visible_list[j].end(), append_list_current[j].begin(), append_list_current[j].end());
+			}
+
+			t_imp.push_back(t_imp_current);
+			dv.push_back(dv_current_vec);
+			imp_num++;
+		}
+		else {
+			double rv0[6];
+			int flag;
+			double coe[6];
+			memcpy(coe, sats_coe0[i], 6 * sizeof(double));
+			coe2rv(flag, rv0, coe, mu_km_s);
+			std::vector <std::vector<double>> visible_list_current;
+			AccessPointObjects(rv0, 0.0, 2.0 * 86400.0, 10.0, 21, visible_list_current);
+			for (int j = 0; j < 21; j++) {
+				visible_list[j].insert(visible_list[j].end(), visible_list_current[j].begin(), visible_list_current[j].end());
+			}
+		}
+	}
+	
+	for (int i = 0; i < TargetNum; i++) {
+		std::sort(visible_list[i].begin(), visible_list[i].end());
+	}
+	max_reseetime(visible_list, max_revisit);
+	for (int i = 0; i < TargetNum; i++) {
+		if (i != TargetNum - 1) {
+			score -= 6.0 / std::max(6.0, max_revisit[i]) * 4.0;					// 地面：小于6h，记满分，否则减分
+		}
+		else {
+			score -= 3.0 / std::max(3.0, max_revisit[i]) * 20.0;					// ship：小于3h，记满分，否则减分
+		}
+	}
+}
+
+
+
+
