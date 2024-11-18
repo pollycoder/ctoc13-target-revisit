@@ -44,7 +44,7 @@ bool filter_bin_file(const std::string& input_filename, const std::string& outpu
 //		h：轨道高度，200km-1000km
 //		dv：脉冲不大于1km/s
 double obj_single_sat(const std::vector<double>& X, std::vector<double>& grad, void* f_data);
-void get_imp_trajectory(int& flag, double  rv0[6], const double  coe0[6], double  rv_imp[6], double& t_imp, double* dv, double  coe_imp[6], double& a, double& e, double& peri, double& apo);
+void get_imp_trajectory(int& flag, double* rv0, const double* coe0, double* rv_imp, double& t_imp, double* dv, double& peri, double& apo);
 void get_revisit(const std::vector<double>& X, const double* para, std::vector<double>& max_revisit, double& t_imp, double* dv, double& score);
 
 // 优化多颗星单次机动
@@ -60,4 +60,16 @@ void get_revisit(const std::vector<double>& X, const double* para, std::vector<d
 //		h：轨道高度，200km-1000km
 //		dv：脉冲不大于1km/s（扰动范围注定不会发生此问题，忽略）
 double obj_multi_sat(const std::vector<double>& X, std::vector<double>& grad, void* f_data);
-void get_revisit(const std::vector<double>& X, const double* para, std::vector<double>& max_revisit, std::vector<double>& t_imp, std::vector<std::vector<double>>& dv, double& score);
+void get_revisit(const std::vector<double>& X, const double* para, std::vector<double>& max_revisit, 
+				 std::vector<double>& t_imp, std::vector<std::vector<double>>& dv, double& score);
+
+
+// 优化指定编号卫星，单次机动
+// 输入参数：
+//		f_data[0 - NumSat_Imp]:带机动的卫星编号
+// 优化变量(4个一循环)：
+//		t：脉冲时间
+//		dv[3]：脉冲3个分量
+double obj_multi_sat_certain(const std::vector<double>& X, std::vector<double>& grad, void* f_data);
+void get_revisit_certain(const std::vector<double>& X, const int* para, std::vector<double>& max_revisit, 
+				 std::vector<double>& t_imp, std::vector<std::vector<double>>& dv, double& score);

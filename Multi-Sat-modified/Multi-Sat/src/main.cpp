@@ -110,7 +110,7 @@ void single_sat_opt() {
 
 	// DE global
 	auto beforeTime = std::chrono::steady_clock::now();
-	DE_parallel(obj_single_sat, para, X, f, X.size(), 50, 5000, 100);
+	DE_parallel(obj_single_sat, para, X, f, X.size(), 10, 5000, 100);
 	auto afterTime = std::chrono::steady_clock::now();
 	double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
 	std::cout << "DE总耗时：" << duration_second << "秒" << std::endl;
@@ -132,28 +132,27 @@ void single_sat_opt() {
 		std::cout << *iter << std::endl;
 	}
 
-	// 种群：100
-	// 迭代次数：2000
+	// 种群：50
+	// 迭代次数：10000
 	// 0.025s目标函数运行一次
-	// 16核，预计1.5h完成
+	// 16核，预计3.33h完成
 }
 
 void multi_sat_opt() {
-	double para[TreeNum * 7];
-	for (int i = 0; i < TreeNum; i++) {
-		for (int j = 0; j < 6; j++) {
-			para[i * 7 + j] = sats_coe0[i][j];
-		}
-		para[i * 7 + 6] = 86400.0;
-	}
+	int para[impNum] = {4, 5, 6, 7};
 	std::vector<double> X;
-	for (int i = 0; i < TreeNum * 4; i++) X.push_back(0.5);
+	std::vector<int> imp_idx;
+	for (int i = 0; i < impNum; i++) {
+		for (int j = 0; j < 4; j++) X.push_back(0.5);
+		imp_idx.push_back(para[i]);
+	}
+
 	double f;
 
 	// DE global
 	auto beforeTime = std::chrono::steady_clock::now();
-	DE_parallel(obj_multi_sat, para, X, f, X.size(), 150, 5000, 50);
-	//nlopt_main(obj_multi_sat, para, X, f, X.size(), 10 * X.size());
+	DE_parallel(obj_multi_sat_certain, para, X, f, X.size(), 50, 2000);
+	nlopt_main(obj_multi_sat, para, X, f, X.size(), 5000);
 	auto afterTime = std::chrono::steady_clock::now();
 	double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
 	std::cout << "总耗时：" << duration_second << "秒" << std::endl;
@@ -161,12 +160,16 @@ void multi_sat_opt() {
 	std::vector<double> max_revisit;
 	std::vector<double> t_imp;
 	std::vector<std::vector<double>> dv;
-	get_revisit(X, para, max_revisit, t_imp, dv, f);
+	get_revisit_certain(X, para, max_revisit, t_imp, dv, f);
 
 	std::ofstream fout0("../output_result/result.txt");
+	int idx = 0;
 	for (int i = 0; i < TreeNum; i++) {
 		fout0 << sats_coe0[i][0] << " " << sats_coe0[i][1] << " " << sats_coe0[i][2] << " " << sats_coe0[i][3] << " " << sats_coe0[i][4] << " " << sats_coe0[i][5] << std::endl;
-		fout0 << t_imp[i] << " " << dv[i][0] << " " << dv[i][1] << " " << dv[i][2] << std::endl;
+		if (std::find(imp_idx.begin(), imp_idx.end(), i) != imp_idx.end()) {
+			fout0 << t_imp[idx] << " " << dv[idx][0] << " " << dv[idx][1] << " " << dv[idx][2] << std::endl;
+			idx++;
+		}
 	}
 
 	int index = 0;
@@ -176,10 +179,10 @@ void multi_sat_opt() {
 		std::cout << "Target" << index << ": " << *iter << std::endl;
 	}
 
-	// 种群：150
+	// 种群：160
 	// 迭代次数：5000
 	// 0.016s目标函数运行一次
-	// 16核，预计2h完成
+	// 16核，预计4h完成
 }
  
 int main() {

@@ -52,6 +52,7 @@ bool is_target_visible(const double* rv_sat, const double* rv_target, double hal
     return true;
 }
 
+
 void AccessPointObjects(
     const double rv0[6],            // 初始卫星状态（位置和速度）
     double t_start,           // 开始时间（秒）
@@ -81,6 +82,74 @@ void AccessPointObjects(
         for (int target_id = 0; target_id < num_targets; ++target_id)
 
         {
+            // 如果目标已经被观测过，跳过
+            // 获取目标在时间 t 的位置
+            double rv_target[3];
+            double Geodetic[2];
+            get_target_geogetic(target_id, t, Geodetic);
+            double r = V_Norm2(rv_sat_t, 3);
+            double latitude_sat = asin(rv_sat_t[2] / r);
+
+            //先判断纬度是否在范围内
+            //if (fabs(Geodetic[0] - latitude_sat) < 6.0 * D2R)
+            //{
+                Geodetic2J2000(Geodetic, rv_target, t);
+
+                //get_target_R(target_id, t, rv_target);
+                // 判断可见性
+                if (is_target_visible(rv_sat_t, rv_target, half_cone_angle)) {
+                    // 目标可见，记录结果
+                    results[target_id].push_back(t);
+                }
+           // }
+        }
+
+        t += dt;
+
+        if (t > t_end) break;
+        if (t > 2.0 * 86400.0) break;
+
+        // 传播卫星到时间 t
+        int flag = propagate_j2(rv_sat_t, rv_sat_t, t - dt, t);
+        if (flag != 1) {
+            //std::cerr << "Orbit propagation failed at time " << t << std::endl;
+            break;
+        }
+    }
+
+    return;
+}
+
+
+void AccessPointCertainObjects(
+    const double rv0[6],                         // 初始卫星状态向量（位置和速度）
+    double t_start,                              // 起始时间，单位：秒
+    double t_end,                                // 结束时间，单位：秒
+    double dt,                                   // 时间步长，单位：秒
+    const std::vector<int>& target_ids,          // 指定的地面目标编号向量
+    std::vector<std::vector<double>>& results,    // 输出：每个目标的可见时间列表
+    const double half_cone_angle
+) {
+    results.resize(target_ids.size());
+
+    double t = t_start;
+    double rv_sat[6];
+    memcpy(rv_sat, rv0, 6 * sizeof(double));
+
+    // 定义卫星的半视场角（例如 10 度，转换为弧度）
+    //double half_cone_angle = 20.0 * D2R; //留一些余量
+
+    // 传播卫星到时间 t
+    double rv_sat_t[6];
+
+    memcpy(rv_sat_t, rv0, 6 * sizeof(double));
+
+    // 循环时间步
+    while (true) {
+        // 对于每个目标
+        for (auto it = target_ids.begin(); it != target_ids.end(); it++)
+        {
+            int target_id = *it;
             // 如果目标已经被观测过，跳过
             // 获取目标在时间 t 的位置
             double rv_target[3];
