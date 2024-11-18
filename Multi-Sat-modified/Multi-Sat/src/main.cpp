@@ -151,7 +151,7 @@ void multi_sat_opt() {
 
 	// DE global
 	auto beforeTime = std::chrono::steady_clock::now();
-	DE_parallel(obj_multi_sat_certain, para, X, f, X.size(), 50, 2000);
+	DE_parallel(obj_multi_sat_certain, para, X, f, X.size(), 20 * X.size(), 5000);
 	nlopt_main(obj_multi_sat, para, X, f, X.size(), 5000);
 	auto afterTime = std::chrono::steady_clock::now();
 	double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
@@ -179,19 +179,19 @@ void multi_sat_opt() {
 		std::cout << "Target" << index << ": " << *iter << std::endl;
 	}
 
-	// 种群：160
+	// 种群：320
 	// 迭代次数：5000
 	// 0.016s目标函数运行一次
-	// 16核，预计4h完成
+	// 16核，预计8h完成
 }
  
 int main() {
 
 	// 核数：16核
 	// 任务：
-	//	1. 7颗星优化，预计8.7h
-	// 开始时间：1:20
-	// 验收时间：10:30
+	//	1. 8颗星验证，预计8h
+	// 开始时间：21:50
+	// 验收时间：8:30
 	//read_db();
 	multi_sat_opt();
 	return 0;
