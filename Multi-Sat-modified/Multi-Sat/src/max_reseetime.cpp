@@ -9,7 +9,7 @@ std::vector<double> max_reseetime(std::vector<std::vector<double>> reseetime_all
     //std::vector<std::vector<double>> c;
 
     for (const auto& row : reseetime_all) {
-        if (row.empty()) {
+        if (row.empty() || row.back() > t_end) {
             c.push_back({(t_end - t_start)/3600.});
             continue;
         }

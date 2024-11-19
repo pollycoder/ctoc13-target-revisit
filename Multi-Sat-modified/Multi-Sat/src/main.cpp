@@ -25,9 +25,9 @@
 const std::string space = " ";
 
 
-// 多棵树搜索（有问题，搁置）
+// 多棵树搜索（重启）
 void multitree_search() {
-	MultiTree multi_tree(1000, 4, 50, 0.3);
+	MultiTree multi_tree(10000, 4, 1000, 1.0);
 
 	auto beforeTime = std::chrono::steady_clock::now();
 	multi_tree.Run();
@@ -35,6 +35,10 @@ void multitree_search() {
 
 	double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
 	std::cout << "总耗时：" << duration_second << "秒" << std::endl;
+	//0.01s扩展一个节点
+	//W=10000，扩展一层130s
+	//至少176层约22880s，预计7h到达
+	//完整扩展约300-400层，一天内必须完成
 }
 
 
@@ -190,8 +194,8 @@ int main() {
 	// 核数：16核
 	// 任务：
 	//	1. 树搜索，
-	// 开始时间：1:20
-	// 验收时间：10:30
+	// 开始时间：15:00
+	// 第一次验收时间：21:00
 	multitree_search();
 	return 0;
 }

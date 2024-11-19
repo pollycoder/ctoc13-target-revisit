@@ -844,7 +844,7 @@ double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad
 	rv02rvf(flag, RVf, RV0, tf - t0, mu_km_s);
 	double target_R[3];
 	get_target_R(id, tf, target_R);
-	bool ifVisible = is_target_visible(RVf, target_R, 19.9 * D2R);
+	bool ifVisible = is_target_visible(RVf, target_R, 20.0 * D2R);
 	if (RVf[0] != RVf[0]) return penalty;
 	if(!ifVisible) { 
 		double Rf[3] = { RVf[0], RVf[1], RVf[2] };
@@ -861,13 +861,11 @@ double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad
 	return impulse;
 }
 
-// 利用h0给dv的初值，默认高度与初始高度一致，扰动之后的值与h0无关
 // TODO：优化之后，用高精度propagate再积一次分
 void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& t0, const double* RV0, const int& target_id, const int& NR, const int& branch) {
 	flag = 0;
 	double target_geo[2];
 	double lambda, phi;
-	double lambda_temp, phi_temp;
 	if (target_id != 20) {
 		get_target_geogetic(target_id, tf, target_geo);
 		lambda = target_geo[1];
@@ -885,7 +883,7 @@ void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& 
 	double m0 = 1000.0, mf; 
 
 	//注意张刚论文的方法里，tf是飞行时长，不是时刻
-	//对于地面目标，放宽打靶经纬度，先计算地心夹角范围，再根据这个给经度和纬度都撒网格，碰到可行解就结束
+	//对于地面目标，放宽打靶经纬度，先计算地心夹角范围，再根据这个给经度和纬度都撒网格，从中选脉冲最低的
 	//对于船，纬度已经比较近似
 	if (target_id != 20) {
 		// 计算地心角范围beta
@@ -893,25 +891,53 @@ void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& 
 		double r = V_Norm2(R0, 3);
 		double gamma = 20.0 * D2R;
 		double beta = asin(r * sin(gamma) / Re_km) - gamma;
-		int mesh_size = 10;
+		int mesh_size = 20, flag_temp = 0;
+		double dv_norm = 1.0e10;
+		double dv_temp[3], tf_temp = 0.0, lambda_temp, phi_temp;
 		for (int i = 0; i < mesh_size; i++) {
 			lambda_temp = lambda + 2.0 * beta / mesh_size * (i - mesh_size / 2.0);
-			int temp = 0;;
+
 			for (int j = 0; j < mesh_size; j++) {
 				phi_temp = phi + 2.0 * beta / mesh_size * (j - mesh_size / 2.0);
-				single_imp(m0, t0, RV0, lambda_temp, phi_temp, 1, flag, mf, tf, dv, NR, branch);
-				if (flag == 1) { 
-					temp = 1;
-					break; 
+				single_imp(m0, t0, RV0, lambda_temp, phi_temp, 1, flag_temp, mf, tf_temp, dv_temp, NR, branch);
+
+				if (flag_temp == 1) { 
+					if (V_Norm2(dv_temp, 3) < dv_norm) {
+						flag = 1;
+						dv_norm = V_Norm2(dv_temp, 3);
+						memcpy(dv, dv_temp, 3 * sizeof(double));
+						tf = tf_temp;
+					}
 				}
-			}
-			if (temp == 1) {
-				break;
 			}
 		}
 	}
 	else {
-		single_imp_ship(m0, t0, RV0, lambda, phi, 1, flag, mf, tf, dv, NR, branch);
+		// 计算地心角范围beta
+		double R0[3] = { RV0[0], RV0[1], RV0[2] };
+		double r = V_Norm2(R0, 3);
+		double gamma = 20.5 * D2R;
+		double beta = asin(r * sin(gamma) / Re_km) - gamma;
+		int mesh_size = 20, flag_temp = 0;
+		double dv_norm = 1.0e10;
+		double dv_temp[3], tf_temp = 0.0, lambda_temp, phi_temp;
+		for (int i = 0; i < mesh_size; i++) {
+			lambda_temp = lambda + 2.0 * beta / mesh_size * (i - mesh_size / 2.0);
+
+			for (int j = 0; j < mesh_size; j++) {
+				phi_temp = phi + 2.0 * beta / mesh_size * (j - mesh_size / 2.0);
+				single_imp_ship(m0, t0, RV0, lambda_temp, phi_temp, 1, flag_temp, mf, tf_temp, dv_temp, NR, branch);
+
+				if (flag_temp == 1) {
+					if (V_Norm2(dv_temp, 3) < dv_norm) {
+						flag = 1;
+						dv_norm = V_Norm2(dv_temp, 3);
+						memcpy(dv, dv_temp, 3 * sizeof(double));
+						tf = tf_temp;
+					}
+				}
+			}
+		}
 	}
 	tf += t0;
 	
