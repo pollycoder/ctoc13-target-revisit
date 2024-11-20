@@ -95,6 +95,7 @@ public:
 	double time_cost;   //总观测时间
 	double height_aver; //总观测时间
 	int total_ship_num;
+	double time_min;	// 最小树的时间
 
 	Optimization_index()
 	{
@@ -103,9 +104,10 @@ public:
 		height_aver = 0.0;
 		time_cost = 0.0;
 		total_ship_num = 0;
+		time_min = 0.0;
 	}
 	Optimization_index(Optimization_index & a): observed_num_(a.observed_num_),total_impulse_(a.total_impulse_), time_cost(a.time_cost),
-		height_aver(a.height_aver), total_ship_num(a.total_ship_num){}
+		height_aver(a.height_aver), total_ship_num(a.total_ship_num), time_min(a.time_min){}
 };
 
 /****************************************************************************

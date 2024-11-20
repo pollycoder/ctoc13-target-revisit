@@ -27,7 +27,7 @@ const std::string space = " ";
 
 // 多棵树搜索（重启）
 void multitree_search() {
-	MultiTree multi_tree(100, 4, 10, dv_max);
+	MultiTree multi_tree(1000, 4, 50, dv_max);
 
 	auto beforeTime = std::chrono::steady_clock::now();
 	multi_tree.Run();
@@ -188,6 +188,33 @@ void multi_sat_opt() {
 	// 0.016s目标函数运行一次
 	// 16核，预计8h完成
 }
+
+void max_revisit_verify() {
+	std::vector<std::vector<double>> rv0_list;
+	std::vector<std::vector<double>> result;
+	for (int i = 0; i < TreeNum; i++) {
+		std::vector<double> rv0;
+		double rv0temp[6];
+		int flag;
+		coe2rv(flag, rv0temp, sats_coe0[i], mu_km_s);
+		for (int j = 0; j < 6; j++) rv0.push_back(rv0temp[j]);
+		rv0_list.push_back(rv0);
+	}
+	MultiSat_AccessPointObjects(rv0_list, 0.0, 172800.0, 60.0, 21, result);
+	std::vector<double> max_revisit;
+	max_reseetime(result, max_revisit);
+	for (auto row = result.begin(); row != result.end(); row++) {
+		for (auto it = row->begin(); it != row->end(); it++) {
+			std::cout << *it << " ";
+		}
+		std::cout << std::endl;
+		std::cout << std::endl;
+	}
+	std::cout << "Max revisit gap:" << std::endl;
+	for (auto it = max_revisit.begin(); it != max_revisit.end(); it++) {
+		std::cout << *it << std::endl;
+	}
+}
  
 int main() {
 
@@ -197,5 +224,6 @@ int main() {
 	// 开始时间：15:00
 	// 第一次验收时间：21:00
 	multitree_search();
+	//max_revisit_verify();
 	return 0;
 }

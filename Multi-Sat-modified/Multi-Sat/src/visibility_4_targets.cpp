@@ -126,11 +126,11 @@ void AccessPointCertainObjects(
     double t_start,                              // 起始时间，单位：秒
     double t_end,                                // 结束时间，单位：秒
     double dt,                                   // 时间步长，单位：秒
-    const std::vector<int>& target_ids,          // 指定的地面目标编号向量
-    std::vector<std::vector<double>>& results,    // 输出：每个目标的可见时间列表
+    const int& target_id,          // 指定的地面目标编号向量
+    std::vector<double>& results,    // 输出：每个目标的可见时间列表
     const double half_cone_angle
 ) {
-    results.resize(target_ids.size());
+    results.resize(0);
 
     double t = t_start;
     double rv_sat[6];
@@ -147,30 +147,28 @@ void AccessPointCertainObjects(
     // 循环时间步
     while (true) {
         // 对于每个目标
-        for (auto it = target_ids.begin(); it != target_ids.end(); it++)
-        {
-            int target_id = *it;
+
             // 如果目标已经被观测过，跳过
             // 获取目标在时间 t 的位置
-            double rv_target[3];
-            double Geodetic[2];
-            get_target_geogetic(target_id, t, Geodetic);
-            double r = V_Norm2(rv_sat_t, 3);
-            double latitude_sat = asin(rv_sat_t[2] / r);
+        double rv_target[3];
+        double Geodetic[2];
+        get_target_geogetic(target_id, t, Geodetic);
+        double r = V_Norm2(rv_sat_t, 3);
+        double latitude_sat = asin(rv_sat_t[2] / r);
 
-            //先判断纬度是否在范围内
-            if (fabs(Geodetic[0] - latitude_sat) < 6.0 * D2R)
-            {
-                Geodetic2J2000(Geodetic, rv_target, t);
+        //先判断纬度是否在范围内
+        if (fabs(Geodetic[0] - latitude_sat) < 6.0 * D2R)
+        {
+            Geodetic2J2000(Geodetic, rv_target, t);
 
-                //get_target_R(target_id, t, rv_target);
-                // 判断可见性
-                if (is_target_visible(rv_sat_t, rv_target, half_cone_angle)) {
-                    // 目标可见，记录结果
-                    results[target_id].push_back(t);
-                }
+            //get_target_R(target_id, t, rv_target);
+            // 判断可见性
+            if (is_target_visible(rv_sat_t, rv_target, half_cone_angle)) {
+                // 目标可见，记录结果
+                results.push_back(t);
             }
         }
+
 
         t += dt;
 
@@ -225,5 +223,79 @@ void MultiSat_AccessPointObjects(
         std::sort(results[j].begin(), results[j].end());
     }
 
+
+}
+
+//简化版：只用60s步长
+void AccessPeriodCertainObject(
+    const double* rv0,
+    const double& t_standard,
+    const double* dv,
+    const int& target_id,
+    double* t_period,
+    const double& half_cone_angle
+) {
+    const double tf_m = t_standard - fmod(t_standard, 60.0);
+    const double tf_p = tf_m + 60.0;
+    double rv_temp_m[6], rv_temp_p[6], rv0_copy[6];
+    double step_m = 60.0, step_p = 60.0;
+
+    memcpy(rv0_copy, rv0, 6 * sizeof(double));
+    propagate_j2(rv0_copy, rv_temp_m, t_standard, tf_m);
+
+    for (int i = 0; i < 3; i++) {
+        rv0_copy[i + 3] += dv[i];
+    }
+    propagate_j2(rv0_copy, rv_temp_p, t_standard, tf_p);
+
+    //先查两个检测点
+    bool ifVisible_m, ifVisible_p;
+
+    double target_r_m[3], target_r_p[3];
+    get_target_R(target_id, tf_m, target_r_m);
+    ifVisible_m = is_target_visible(rv_temp_m, target_r_m, half_cone_angle);
+    get_target_R(target_id, tf_p, target_r_p);
+    ifVisible_p = is_target_visible(rv_temp_p, target_r_p, half_cone_angle);
+
+    // ATK无法检测，放弃
+    if (!ifVisible_m && !ifVisible_p) {
+        t_period[0] = 1.0e10;
+        t_period[1] = 1.0e10;
+        return;
+    }
+    
+    if (!ifVisible_m) t_period[0] = tf_p;
+    if (!ifVisible_p) t_period[1] = tf_m;
+    
+    //如果头可见，从头开始向前递推
+    if (ifVisible_m) {
+        t_period[0] = tf_m;                                     // 从head开始向前，给定初始时刻
+        double tm_temp = tf_m;
+        while (ifVisible_m) {
+            propagate_j2(rv_temp_m, rv_temp_m, tm_temp, tm_temp - 60.0);
+            get_target_R(target_id, tm_temp - 60.0, target_r_m);
+            ifVisible_m = is_target_visible(rv_temp_m, target_r_m, half_cone_angle);
+            if (ifVisible_m) {
+                tm_temp -= 60.0;
+                if(tm_temp >= 0.0) t_period[0] = tm_temp;
+            }
+        }
+    }
+   
+
+    //如果尾可见，从尾开始向后递推
+    if (ifVisible_p) {
+        t_period[1] = tf_p;                                     // 从tail开始向后，给定末端时刻
+        double tp_temp = tf_p;
+        while (ifVisible_p) {
+            propagate_j2(rv_temp_p, rv_temp_p, tp_temp, tp_temp + 60.0);
+            get_target_R(target_id, tp_temp + 60.0, target_r_p);
+            ifVisible_p = is_target_visible(rv_temp_p, target_r_p, half_cone_angle);
+            if (ifVisible_p) {
+                tp_temp += 60.0;
+                t_period[1] = tp_temp;
+            }
+        }
+    }
 
 }

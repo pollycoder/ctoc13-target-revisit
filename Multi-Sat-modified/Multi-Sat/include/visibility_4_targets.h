@@ -66,8 +66,8 @@ void AccessPointCertainObjects(
     double t_start,                              // 起始时间，单位：秒
     double t_end,                                // 结束时间，单位：秒
     double dt,                                   // 时间步长，单位：秒
-    const std::vector<int>& target_ids,          // 指定的地面目标编号向量
-    std::vector<std::vector<double>>& results,    // 输出：每个目标的可见时间列表
+    const int& target_id,          // 指定的地面目标编号向量
+    std::vector<double>& results,    // 输出：每个目标的可见时间列表
     const double half_cone_angle = 20.0 * D2R
 );
 
@@ -100,6 +100,21 @@ void MultiSat_AccessPointObjects(
 );
 
 
-int test_visibilty();
+/**
+ * @brief 计算某个地面目标在一段时间内对某颗卫星的精确可见时段。
+ *
+ * 该函数以 t_standard 为基准，检测前后两个ATK检测点的可见性。
+ * 注意如果该时间点加了脉冲，后一个检测点应该用脉冲后的rv递推。
+ * 如果两个检测点都可见，从两边分别找边界；如果只有一个点可见，
+ * 那么从这个点向两头找边界；都不可见则放弃
+ */
+void AccessPeriodCertainObject(
+    const double* rv0,
+    const double& t_standard,
+    const double* dv,
+    const int& target_id,
+    double* t_period,
+    const double& half_cone_angle = 20.0 * D2R
+);
 
 #endif // SATELLITE_VISIBILITY_H

@@ -9,7 +9,7 @@ std::vector<double> max_reseetime(std::vector<std::vector<double>> reseetime_all
     //std::vector<std::vector<double>> c;
 
     for (const auto& row : reseetime_all) {
-        if (row.empty() || row.back() > t_end) {
+        if (row.empty() || row.front() > t_end) {
             c.push_back({(t_end - t_start)/3600.});
             continue;
         }
@@ -18,10 +18,18 @@ std::vector<double> max_reseetime(std::vector<std::vector<double>> reseetime_all
         diffRow.push_back((row[0] - t_start) / 3600.); // 第一个值减0
         //std::cout << diffRow[0] << " ";
         for (size_t j = 1; j <= row.size(); ++j) {
-            if (j < row.size())
-                diffRow.push_back((row[j] - row[j - 1]) / 3600.); // 相邻值的差
-            else
-                diffRow.push_back((t_end - row.back())/3600.);
+            if (j < row.size()) {
+                if (row[j] < t_end) {
+                    diffRow.push_back((row[j] - row[j - 1]) / 3600.); // 相邻值的差
+                }
+                else {
+                    diffRow.push_back((t_end - row[j]) / 3600.0);
+                    break;
+                }
+            }
+            else {
+                diffRow.push_back((t_end - row.back()) / 3600.);
+            }
              
            // std::cout << diffRow[j] << " ";
         }

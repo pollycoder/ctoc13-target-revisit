@@ -28,18 +28,14 @@ bool sort_by_out(const OutputResult& a, const OutputResult& b)
 ****************************************************************************/
 inline bool MultiTree::SortTNC(const TNC& a, const TNC& b)
 {
-	/*if (a.op_index_.total_ship_num > b.op_index_.total_ship_num) {
-		return true;
-	}
-	else if (a.op_index_.total_ship_num == b.op_index_.total_ship_num) {*/
-		double a_ave_gap = a.op_index_.time_cost / double(a.op_index_.observed_num_);
-		double b_ave_gap = b.op_index_.time_cost / double(b.op_index_.observed_num_);
+		double a_ave_gap = a.op_index_.time_cost;
+		double b_ave_gap = b.op_index_.time_cost;
 		if (a_ave_gap < b_ave_gap) {
 			// 同样时间看的点最多者为佳
 			return true;
 		}
 		else if (a_ave_gap == b_ave_gap) {
-			if (a.op_index_.total_impulse_ < b.op_index_.total_impulse_) {
+			if (a.op_index_.time_min < b.op_index_.time_min) {
 				return true;
 			}
 			else {
@@ -49,10 +45,7 @@ inline bool MultiTree::SortTNC(const TNC& a, const TNC& b)
 		else {
 			return false;
 		}
-	/*}
-	else {
-		return false;
-	}*/
+	
 }
 
 /****************************************************************************
@@ -61,13 +54,6 @@ inline bool MultiTree::SortTNC(const TNC& a, const TNC& b)
 ****************************************************************************/
 inline bool MultiTree::EqualTNC(const TNC& a, const TNC& b)
 {
-	//if ((fabs(a.op_index_.total_impulse_ - b.op_index_.total_impulse_) < 1.0e-10 )
-	//		 && (a.op_index_.observed_num_ == b.op_index_.observed_num_))
-	//{
-	//	//得到两个序列
-	//	return true;
-	//}
-	//
 	return  false;
 }
 
@@ -262,6 +248,7 @@ void TNC::Calculate_op_index()
 	Solution solution_temp = GetBack();
 	double height_total = 0.0;
 	int total_ship_num = 0;
+	double time_min = 1.0e10;
 	
 	double time_last = -1.0e10;
 	for (int i= 0; i< TreeNum; i++)
@@ -270,6 +257,7 @@ void TNC::Calculate_op_index()
 		
 		double time_temp = solution_temp.solution_[i].node_info_.back().time_acc_; //最终时间
 		if (time_temp > time_last)  time_last = time_temp;
+		if (time_temp < time_min) time_min = time_temp;
 
 		for(int j = 0; j < solution_temp.solution_[i].node_info_.size(); j++)      //观测个数
 		{
@@ -292,6 +280,7 @@ void TNC::Calculate_op_index()
 	op_index_.total_impulse_ = total_impulse;
 	op_index_.observed_num_ = total_number;
 	op_index_.total_ship_num = total_ship_num;
+	op_index_.time_min = time_min;
 }
 
 /****************************************************************************
@@ -368,6 +357,7 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 		bool ifVisible = is_target_visible(rv_sat, target_r0, 20.0 * D2R);
 		if (ifVisible) {
 			if (last2_id == j + 1) {
+				//出现自锁，跳过
 				continue;
 			}
 			Node_problem temp;
@@ -462,46 +452,50 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 
 		// 打靶全都失败，则无机动验一次能否可见，如果非空则取第一个值，否则就是真看不到
 		// 如果是求解漏了，可以扩展短时的点，如果就是不可能看到，也可以保证一直有点可以扩展，停止只会因为解不可行
-		if (true) {
-			double tf = node->problem_.node_info_.back().time_acc_;
-			double rv0[6];
+		if (!total_flag) {
+			double t0 = node->problem_.node_info_.back().time_acc_;
+			double rv0[6], rvf[6];
 			memcpy(rv0, node->problem_.node_info_.back().rv_acc_, 6 * sizeof(double));
-			double rv0_temp[6], rvf_temp[6], r_target[3];
-			memcpy(rv0_temp, rv0, 6 * sizeof(double));
-			while (tf < 2.0 * 86400.0 - 60.0) {
-				propagate_j2(rv0_temp, rvf_temp, tf, tf + 60.0);
-				double Geodetic[2];
-				get_target_geogetic(j, tf, Geodetic);
-				Geodetic2J2000(Geodetic, r_target, tf + 60.0);
-				if (is_target_visible(rvf_temp, r_target, 20.5 * D2R)) {
-					Node_problem temp;
-					OutputResult temp_out2; //机动的信息，机动后的信息
-
-					temp_out2.action_ = 2;
-					temp_out2.time_acc_ = tf + 60.0;
-					memcpy(temp_out2.rv_acc_, rvf_temp, 6 * sizeof(double));
-					for (int i = 0; i < 3; i++) temp_out2.dv_[i] = 0.0;
-					if (fabs(tf - 86400.0 * 2.0) < 1.0e-5) {
-						temp_out2.action_ = 3;
-						temp_out2.point_id_ = 0;
-					}
-					else {
-						temp_out2.point_id_ = j + 1;
-					}
-
-					//最后一个放tf的子节点
-					temp.node_info_.push_back(temp_out2);
-					child_node_problems.push_back(temp);
-					break;
-				}
-				else {
-					memcpy(rv0_temp, rvf_temp, 6 * sizeof(double));
-					tf += 60.0;
-				}
+			const int id = j;
+			std::vector<double> time_list;
+			AccessPointCertainObjects(rv0, t0, 172800.0, 60.0, id, time_list);
+			
+			if (time_list.empty()) {
+				continue;
 			}
-			continue;
+
+			
+			if (time_list[0] != t0) {
+				propagate_j2(rv0, rvf, t0, time_list[0]);
+
+				Node_problem temp;
+				OutputResult temp_out; //机动的信息，机动后的信息
+				temp_out.action_ = 2;
+				temp_out.point_id_ = j + 1;
+				temp_out.time_acc_ = time_list[0];
+				memcpy(temp_out.rv_acc_, rvf, 6 * sizeof(double));
+
+				temp.node_info_.push_back(temp_out);
+				child_node_problems.push_back(temp);
+			}
+			else {
+				propagate_j2(rv0, rvf, t0, time_list[1]);
+
+				Node_problem temp;
+				OutputResult temp_out; //机动的信息，机动后的信息
+				temp_out.action_ = 2;
+				temp_out.point_id_ = j + 1;
+				temp_out.time_acc_ = time_list[1];
+				memcpy(temp_out.rv_acc_, rvf, 6 * sizeof(double));
+
+				temp.node_info_.push_back(temp_out);
+				child_node_problems.push_back(temp);
+			}
 		}
 	}
+	/*if (child_node_problems.empty()) {
+		std::cout << "无节点可扩展！" << std::endl;
+	}*/
 }
 
 /****************************************************************************
@@ -533,11 +527,31 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 		if(temp.node_info_[temp.node_info_.size() - 1].time_acc_ < tf_min) tf_min = temp.node_info_[temp.node_info_.size() - 1].time_acc_;
 		if(temp.node_info_[temp.node_info_.size() - 1].time_acc_ > tf_max) tf_max = temp.node_info_[temp.node_info_.size() - 1].time_acc_;
 
-		for (int k = 0; k < temp.node_info_.size(); k++)
-		{
-			if (temp.node_info_[k].action_ == 2)// && fmod(temp.node_info_[k].time_acc_, 60.0) < 1e-4)
-				//visited[temp.node_info_[k].point_id_] ++;
-				visible_timelist[temp.node_info_[k].point_id_ - 1].push_back(temp.node_info_[k].time_acc_);
+		for (int k = 0; k < temp.node_info_.size(); k++) {
+			if (temp.node_info_[k].action_ == 2) {
+				const int id = temp.node_info_[k].point_id_ - 1;
+				double rv_standard[6], t_standard, dv[3], t_period[2];
+				t_standard = temp.node_info_[k].time_acc_;
+				
+				memcpy(rv_standard, temp.node_info_[k].rv_acc_, 6 * sizeof(double));
+				if (k < temp.node_info_.size() - 1 && temp.node_info_[k + 1].action_ == 1) {
+					memcpy(dv, temp.node_info_[k + 1].dv_, 3 * sizeof(double));
+				}
+				else {
+					for (int w = 0; w < 3; w++) dv[w] = 0.0;
+				}
+
+				AccessPeriodCertainObject(rv_standard, t_standard, dv, id, t_period);
+				if (t_period[0] > 172800.0) {
+					// ATK无法检测，放弃
+					continue;
+				}
+				else {
+					visible_timelist[id].push_back(t_period[0]);
+					visible_timelist[id].push_back(t_period[1]);
+				}
+
+			}
 		}
 
 		if (temp.node_info_[temp.node_info_.size() - 1].time_acc_ < tf_min) {
@@ -566,14 +580,14 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 		idx++;
 		if (idx != TargetNum) {
 			if (*iter > 6.0) {
-				//std::cout << "目标" << idx << "的最大重访时间已经达到" << *iter << "h" << std::endl;
+				std::cout << "目标" << idx << "的最大重访时间已经达到" << *iter << "h" << std::endl;
 				ifpossible = false;
 			}
 			
 		}
 		else {
 			if (*iter > 3.0) {
-				//std::cout << "目标" << idx << "的最大重访时间已经达到" << *iter << "h" << std::endl;
+				std::cout << "目标" << idx << "的最大重访时间已经达到" << *iter << "h" << std::endl;
 				ifpossible = false;
 			}
 			
