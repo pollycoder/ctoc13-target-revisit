@@ -876,7 +876,10 @@ void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& 
 		double phi_end = target_geo[0];
 		get_target_geogetic(target_id, 0.0, target_geo);
 		double phi_start = target_geo[0];
-		phi = (phi_start + phi_end) / 2.0;
+
+		// 纬度更精确一些：以一圈105min计，将纬度等分
+		double dphi = (phi_start - phi_end) * double(NR) * 6300.0 / 172800.0;
+		phi = phi_start + dphi;
 		lambda = target_geo[1];
 	}
 	

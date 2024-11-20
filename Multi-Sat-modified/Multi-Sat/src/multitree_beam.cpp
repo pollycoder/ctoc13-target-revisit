@@ -28,14 +28,17 @@ bool sort_by_out(const OutputResult& a, const OutputResult& b)
 ****************************************************************************/
 inline bool MultiTree::SortTNC(const TNC& a, const TNC& b)
 {
-		// ship次数保证相等，看平均每次的观测时间
-		double a_ave_t = a.op_index_.time_cost;
-		double b_ave_t = b.op_index_.time_cost;
-		if (a_ave_t < b_ave_t) {
+	/*if (a.op_index_.total_ship_num > b.op_index_.total_ship_num) {
+		return true;
+	}
+	else if (a.op_index_.total_ship_num == b.op_index_.total_ship_num) {*/
+		double a_ave_gap = a.op_index_.time_cost / double(a.op_index_.observed_num_);
+		double b_ave_gap = b.op_index_.time_cost / double(b.op_index_.observed_num_);
+		if (a_ave_gap < b_ave_gap) {
+			// 同样时间看的点最多者为佳
 			return true;
 		}
-		else if (a_ave_t == b_ave_t) {
-			// 平均时间也相等，比脉冲
+		else if (a_ave_gap == b_ave_gap) {
 			if (a.op_index_.total_impulse_ < b.op_index_.total_impulse_) {
 				return true;
 			}
@@ -46,7 +49,10 @@ inline bool MultiTree::SortTNC(const TNC& a, const TNC& b)
 		else {
 			return false;
 		}
-	
+	/*}
+	else {
+		return false;
+	}*/
 }
 
 /****************************************************************************
@@ -55,13 +61,13 @@ inline bool MultiTree::SortTNC(const TNC& a, const TNC& b)
 ****************************************************************************/
 inline bool MultiTree::EqualTNC(const TNC& a, const TNC& b)
 {
-	if ((fabs(a.op_index_.total_impulse_ - b.op_index_.total_impulse_) < 1.0e-10 )
-			 && (a.op_index_.observed_num_ == b.op_index_.observed_num_))
-	{
-		//得到两个序列
-		return true;
-	}
-	
+	//if ((fabs(a.op_index_.total_impulse_ - b.op_index_.total_impulse_) < 1.0e-10 )
+	//		 && (a.op_index_.observed_num_ == b.op_index_.observed_num_))
+	//{
+	//	//得到两个序列
+	//	return true;
+	//}
+	//
 	return  false;
 }
 
@@ -272,6 +278,7 @@ void TNC::Calculate_op_index()
 				total_number++;
 				height_total += V_Norm2(solution_temp.solution_[i].node_info_[j].rv_acc_, 3) - Re_km;
 				if (solution_temp.solution_[i].node_info_[j].point_id_ == 21) total_ship_num++;
+				if (solution_temp.solution_[i].node_info_[j].point_id_ == 4) total_ship_num++;
 			}
 			else if (solution_temp.solution_[i].node_info_[j].action_ == 1) {
 				total_impulse += V_Norm2(solution_temp.solution_[i].node_info_[j].dv_, 3);
@@ -377,7 +384,7 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 
 		bool total_flag = false;						// 记录是否有打靶成功过，有则记1
 		for (int bra = 0; bra < 2; bra++) {
-			for (int NR = 1; NR < 4; NR++) {
+			for (int NR = 1; NR < 5; NR++) {
 				double t0, h0, rv0[6], coe0[6], lambda0, phi0, tf, dv[3], a, e, hmin, hmax;
 				int flag;
 
@@ -424,6 +431,11 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 				for (int i = 0; i < 3; i++)  rv0[3 + i] += dv[i];
 				memcpy(temp_out.rv_acc_, rv0, 6 * sizeof(double));
 				memcpy(temp_out.dv_, dv, 3 * sizeof(double));
+
+				/*if (V_Norm2(dv, 3) > 0.001 && V_Norm2(dv, 3) < 1.0) {
+					std::cout << "大脉冲点，脉冲为" << V_Norm2(dv, 3) << std::endl;
+				}*/
+
 				temp_out.time_acc_ = t0;
 				temp_out.point_id_ = 0;
 				temp.node_info_.push_back(temp_out);
@@ -449,8 +461,8 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 		}
 
 		// 打靶全都失败，则无机动验一次能否可见，如果非空则取第一个值，否则就是真看不到
-		// 如果是求解漏了，可以扩展短时的点，
-		if (!total_flag) {
+		// 如果是求解漏了，可以扩展短时的点，如果就是不可能看到，也可以保证一直有点可以扩展，停止只会因为解不可行
+		if (true) {
 			double tf = node->problem_.node_info_.back().time_acc_;
 			double rv0[6];
 			memcpy(rv0, node->problem_.node_info_.back().rv_acc_, 6 * sizeof(double));
@@ -461,7 +473,7 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 				double Geodetic[2];
 				get_target_geogetic(j, tf, Geodetic);
 				Geodetic2J2000(Geodetic, r_target, tf + 60.0);
-				if (is_target_visible(rvf_temp, r_target, 20.0 * D2R)) {
+				if (is_target_visible(rvf_temp, r_target, 20.5 * D2R)) {
 					Node_problem temp;
 					OutputResult temp_out2; //机动的信息，机动后的信息
 
@@ -612,7 +624,7 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 		return;
 	}
 
-	if (tnc.op_index_.total_impulse_ > 0.9) {
+	if (tnc.op_index_.total_impulse_ > dv_max - 1.0e-3) {
 		return;// 脉冲超过，停止扩展该TNC
 	}
 

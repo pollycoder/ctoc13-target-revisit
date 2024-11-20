@@ -27,7 +27,7 @@ const std::string space = " ";
 
 // ¶à¿ÃÊ÷ËÑË÷£¨ÖØÆô£©
 void multitree_search() {
-	MultiTree multi_tree(10000, 4, 1000, 1.0);
+	MultiTree multi_tree(100, 4, 10, dv_max);
 
 	auto beforeTime = std::chrono::steady_clock::now();
 	multi_tree.Run();
