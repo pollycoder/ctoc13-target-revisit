@@ -73,3 +73,7 @@ void get_revisit(const std::vector<double>& X, const double* para, std::vector<d
 double obj_multi_sat_certain(const std::vector<double>& X, std::vector<double>& grad, void* f_data);
 void get_revisit_certain(const std::vector<double>& X, const int* para, std::vector<double>& max_revisit, 
 				 std::vector<double>& t_imp, std::vector<std::vector<double>>& dv, double& score);
+
+void get_revisit_certain_coe(const std::vector<double>& X, const std::vector<double>& X0_dv, const int* para, std::vector<double>& max_revisit,
+	std::vector<double>& t_imp, std::vector<std::vector<double>>& dv, double& score, std::vector<std::vector<double>>& coe_result);
+double obj_func_imp_coe(const std::vector<double>& X, std::vector<double>& grad, void* f_data);

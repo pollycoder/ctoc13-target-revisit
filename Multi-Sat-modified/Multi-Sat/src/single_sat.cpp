@@ -360,6 +360,8 @@ double obj_multi_sat_certain(const std::vector<double>& X, std::vector<double>& 
 	return f;
 }
 
+
+
 void get_revisit_certain(const std::vector<double>& X, const int* para, std::vector<double>& max_revisit,
 	std::vector<double>& t_imp, std::vector<std::vector<double>>& dv, double& score) {
 	const int varnum_group = 4;
@@ -394,8 +396,8 @@ void get_revisit_certain(const std::vector<double>& X, const int* para, std::vec
 			const std::vector<double> dv_current_vec = { dv_current[0], dv_current[1], dv_current[2] };
 			std::vector <std::vector<double>> visible_list_current;
 			std::vector<std::vector<double>> append_list_current;
-			AccessPointObjects(rv0_current, 0.0, t_imp_current, 60.0, 21, visible_list_current, 20.2 * D2R);
-			AccessPointObjects(rv_imp_current, t_imp_current, 2.0 * 86400.0, 60.0, 21, append_list_current, 20.2 * D2R);
+			AccessPointObjects(rv0_current, 0.0, t_imp_current, 60.0, 21, visible_list_current, 20.5 * D2R);
+			AccessPointObjects(rv_imp_current, t_imp_current, 2.0 * 86400.0, 60.0, 21, append_list_current, 20.5 * D2R);
 			for (int j = 0; j < 21; j++) {
 				visible_list[j].insert(visible_list[j].end(), visible_list_current[j].begin(), visible_list_current[j].end());
 				visible_list[j].insert(visible_list[j].end(), append_list_current[j].begin(), append_list_current[j].end());
@@ -419,6 +421,119 @@ void get_revisit_certain(const std::vector<double>& X, const int* para, std::vec
 		}
 	}
 	
+	for (int i = 0; i < TargetNum; i++) {
+		std::sort(visible_list[i].begin(), visible_list[i].end());
+	}
+	max_reseetime(visible_list, max_revisit);
+	for (int i = 0; i < TargetNum; i++) {
+		if (i != TargetNum - 1) {
+			score -= 6.0 / std::max(6.0, max_revisit[i]) * 4.0;					// 地面：小于6h，记满分，否则减分
+		}
+		else {
+			score -= 3.0 / std::max(3.0, max_revisit[i]) * 20.0;					// ship：小于3h，记满分，否则减分
+		}
+	}
+}
+
+
+double obj_func_imp_coe(const std::vector<double>& X, std::vector<double>& grad, void* f_data) {
+
+	std::vector<double> X0_dv = { 0.388006583243354,
+ 0.580287233718683,
+ 0.256041060231598,
+ 0.0690127584672896,
+ 0.287669938799895,
+ 0.284005073152357,
+ 0.355947048888501,
+ 0.863257478506611,
+ 0.570483804523302,
+ 0.412280551837887,
+ 0.671229063980333,
+ 0.00215954482790373,
+ 0.144553532507848,
+ 0.723825325437608,
+ 0.479182095558075,
+ 0.557197591452098 };
+
+	int para[impNum] = { 4, 5, 6, 7 };
+	std::vector<double> max_revisit;
+	std::vector<double> t_imp;
+	std::vector<std::vector<double>> dv;
+	double f;
+	std::vector<std::vector<double>> result_coe;
+
+	get_revisit_certain_coe(X, X0_dv, para, max_revisit, t_imp, dv, f, result_coe);
+	return f;
+}
+
+
+void get_revisit_certain_coe(const std::vector<double>& X, const std::vector<double>& X0_dv, const int* para, std::vector<double>& max_revisit,
+	std::vector<double>& t_imp, std::vector<std::vector<double>>& dv, double& score, std::vector<std::vector<double>>& coe_result) {
+	const int varnum_group = 4;
+	score = 0.0;
+
+	std::vector<int> sat_id_imp;
+	for (int i = 0; i < impNum; i++) sat_id_imp.push_back(para[i]);
+
+	std::vector<std::vector<double>> visible_list;
+	visible_list.resize(21);
+	int flag;
+
+	int imp_num = 0;
+	for (int i = 0; i < TreeNum; i++) {
+		if (std::find(sat_id_imp.begin(), sat_id_imp.end(), i) != sat_id_imp.end()) {		// 带机动的星
+			std::vector<double> X_current;
+			for (int j = 0; j < varnum_group; j++) X_current.push_back(X0_dv[imp_num * varnum_group + j]);
+
+			double coe0_current[6], rv0_current[6], t_imp_current,
+				dv_current[3], rv_imp_current[6], peri, apo;
+
+			double p[6];
+			memcpy(p, sats_coe0[i], 6 * sizeof(double));
+			p[3] += (X[imp_num * 3] - 0.5) * DPI / 10.0;
+			p[4] += (X[imp_num * 3 + 1] - 0.5) * DPI / 10.0;
+			p[5] += (X[imp_num * 3 + 2] - 0.5) * DPI / 10.0;
+			pert_single_sat(X_current, p, t_imp_current, dv_current, coe0_current);
+
+			get_imp_trajectory(flag, rv0_current, coe0_current, rv_imp_current, t_imp_current, dv_current, peri, apo);
+
+			double lb = 200.0, ub = 1000.0;
+			score += (std::max(apo, ub) - ub) * (std::max(apo, ub) - ub);
+			score += (std::min(peri, lb) - lb) * (std::min(peri, lb) - lb);
+
+			const std::vector<double> dv_current_vec = { dv_current[0], dv_current[1], dv_current[2] };
+			std::vector <std::vector<double>> visible_list_current;
+			std::vector<std::vector<double>> append_list_current;
+			AccessPointObjects(rv0_current, 0.0, t_imp_current, 60.0, 21, visible_list_current, 20.5 * D2R);
+			AccessPointObjects(rv_imp_current, t_imp_current, 2.0 * 86400.0, 60.0, 21, append_list_current, 20.5 * D2R);
+			for (int j = 0; j < 21; j++) {
+				visible_list[j].insert(visible_list[j].end(), visible_list_current[j].begin(), visible_list_current[j].end());
+				visible_list[j].insert(visible_list[j].end(), append_list_current[j].begin(), append_list_current[j].end());
+			}
+
+			t_imp.push_back(t_imp_current);
+			dv.push_back(dv_current_vec);
+			std::vector<double> coe_list = { p[0], p[1], p[2], p[3], p[4], p[5] };
+			coe_result.push_back(coe_list);
+			imp_num++;
+		}
+		else {
+			double rv0[6];
+			int flag;
+			double coe[6];
+			memcpy(coe, sats_coe0[i], 6 * sizeof(double));
+			//coe[3] += (X[i] - 0.5) * DPI / 10.0;
+			coe2rv(flag, rv0, coe, mu_km_s);
+			std::vector <std::vector<double>> visible_list_current;
+			AccessPointObjects(rv0, 0.0, 2.0 * 86400.0, 60.0, 21, visible_list_current, 20.3 * D2R);
+			for (int j = 0; j < 21; j++) {
+				visible_list[j].insert(visible_list[j].end(), visible_list_current[j].begin(), visible_list_current[j].end());
+			}
+			std::vector<double> coe_list = { coe[0], coe[1], coe[2], coe[3], coe[4], coe[5] };
+			coe_result.push_back(coe_list);
+		}
+	}
+
 	for (int i = 0; i < TargetNum; i++) {
 		std::sort(visible_list[i].begin(), visible_list[i].end());
 	}
