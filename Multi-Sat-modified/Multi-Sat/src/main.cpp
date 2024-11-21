@@ -154,12 +154,12 @@ void multi_sat_opt() {
 	double f;
 
 	// DE global
-	auto beforeTime = std::chrono::steady_clock::now();
-	DE_parallel(obj_multi_sat_certain, para, X, f, X.size(), 10 * X.size(), 10000, 50);
+	/*auto beforeTime = std::chrono::steady_clock::now();
+	DE_parallel(obj_multi_sat_certain, para, X, f, X.size(), 40, 10000, 50);
 	nlopt_main(obj_multi_sat_certain, para, X, f, X.size(), 5000);
 	auto afterTime = std::chrono::steady_clock::now();
 	double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
-	std::cout << "总耗时：" << duration_second << "秒" << std::endl;
+	std::cout << "总耗时：" << duration_second << "秒" << std::endl;*/
 
 	std::vector<double> max_revisit;
 	std::vector<double> t_imp;
@@ -167,6 +167,7 @@ void multi_sat_opt() {
 	
 	//DE_parallel(obj_func_imp_coe, para, X, f, X.size(), 5 * X.size(), 10000, 100);
 	get_revisit_certain(X, para, max_revisit, t_imp, dv, f);
+	std::cout << "f = " << f << std::endl;
 
 	std::ofstream fout0("../output_result/result.txt");
 	int idx = 0;
@@ -225,8 +226,8 @@ int main() {
 	//	1. 树搜索，
 	// 开始时间：15:00
 	// 第一次验收时间：21:00
-	//multitree_search();
+	multitree_search();
 	//max_revisit_verify();
-	multi_sat_opt();
+	//multi_sat_opt();
 	return 0;
 }

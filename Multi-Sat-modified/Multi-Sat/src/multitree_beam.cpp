@@ -20,6 +20,16 @@ bool sort_by_out(const OutputResult& a, const OutputResult& b)
 	return result;
 }
 
+bool sort_Nodes(const Node_problem& a, const Node_problem& b) {
+	bool result = false;
+	if (a.node_info_.back().time_acc_ < b.node_info_.back().time_acc_) {
+		return true;
+	}
+	else {
+		return false;
+	}
+}
+
 
 /****************************************************************************
 * 函数名   : SortNode(int a,int b)
@@ -373,86 +383,86 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 		}
 
 		bool total_flag = false;						// 记录是否有打靶成功过，有则记1
-		for (int bra = 0; bra < 2; bra++) {
-			for (int NR = 1; NR < 5; NR++) {
-				double t0, h0, rv0[6], coe0[6], lambda0, phi0, tf, dv[3], a, e, hmin, hmax;
-				int flag;
+		//for (int bra = 0; bra < 2; bra++) {
+		//	for (int NR = 1; NR < 5; NR++) {
+		//		double t0, h0, rv0[6], coe0[6], lambda0, phi0, tf, dv[3], a, e, hmin, hmax;
+		//		int flag;
 
-				memcpy(rv0, node->problem_.node_info_.back().rv_acc_, 6 * sizeof(double));
-				t0 = node->problem_.node_info_.back().time_acc_;
-				tf = t0 + 10800.0;						//从3h开始扰动，瞎给的，用的是张刚论文的方法给初值，tf除了ship随便取
+		//		memcpy(rv0, node->problem_.node_info_.back().rv_acc_, 6 * sizeof(double));
+		//		t0 = node->problem_.node_info_.back().time_acc_;
+		//		tf = t0 + 10800.0;						//从3h开始扰动，瞎给的，用的是张刚论文的方法给初值，tf除了ship随便取
 
-				rv2coe(flag, coe0, rv0, mu_km_s);
-				a = coe0[0]; e = coe0[1];
-				hmin = a * (1 - e) - Re_km;
-				hmax = a * (1 + e) - Re_km;
-				if (hmin < 201.0 || hmax > 999.0) {
-					continue;
-				}
+		//		rv2coe(flag, coe0, rv0, mu_km_s);
+		//		a = coe0[0]; e = coe0[1];
+		//		hmin = a * (1 - e) - Re_km;
+		//		hmax = a * (1 + e) - Re_km;
+		//		if (hmin < 201.0 || hmax > 999.0) {
+		//			continue;
+		//		}
 
-				double rvf[6];
+		//		double rvf[6];
 
-				// 打靶到下一个目标，适配visit_gap
-				obs_shooting(flag, dv, tf, rvf, t0, rv0, j, NR, bra);
+		//		// 打靶到下一个目标，适配visit_gap
+		//		obs_shooting(flag, dv, tf, rvf, t0, rv0, j, NR, bra);
 
-				if (flag != 1) {
-					continue;
-				}
-				else {
-					total_flag = 1;
-				}
-				
-				double rv1[6], rv2[6];
-				memcpy(rv1, rv0, 6 * sizeof(double));
-				for (int i = 0; i < 3; i++) rv1[i + 3] += dv[i];
+		//		if (flag != 1) {
+		//			continue;
+		//		}
+		//		else {
+		//			total_flag = 1;
+		//		}
+		//		
+		//		double rv1[6], rv2[6];
+		//		memcpy(rv1, rv0, 6 * sizeof(double));
+		//		for (int i = 0; i < 3; i++) rv1[i + 3] += dv[i];
 
-				// 超过两天则只积分到172800s
-				if (tf > 2.0 * 86400.0) {
-					tf = 2.0 * 86400.0;
-					propagate_j2(rv1, rvf, t0, tf);
-				}
+		//		// 超过两天则只积分到172800s
+		//		if (tf > 2.0 * 86400.0) {
+		//			tf = 2.0 * 86400.0;
+		//			propagate_j2(rv1, rvf, t0, tf);
+		//		}
 
 
-				//TODO: 将结果输出
-				Node_problem temp;
-				OutputResult temp_out, temp_out2, temp_out3; //机动的信息，机动后的信息
+		//		//TODO: 将结果输出
+		//		Node_problem temp;
+		//		OutputResult temp_out, temp_out2, temp_out3; //机动的信息，机动后的信息
 
-				temp_out.action_ = 1;
-				for (int i = 0; i < 3; i++)  rv0[3 + i] += dv[i];
-				memcpy(temp_out.rv_acc_, rv0, 6 * sizeof(double));
-				memcpy(temp_out.dv_, dv, 3 * sizeof(double));
+		//		temp_out.action_ = 1;
+		//		for (int i = 0; i < 3; i++)  rv0[3 + i] += dv[i];
+		//		memcpy(temp_out.rv_acc_, rv0, 6 * sizeof(double));
+		//		memcpy(temp_out.dv_, dv, 3 * sizeof(double));
 
-				/*if (V_Norm2(dv, 3) > 0.001 && V_Norm2(dv, 3) < 1.0) {
-					std::cout << "大脉冲点，脉冲为" << V_Norm2(dv, 3) << std::endl;
-				}*/
+		//		/*if (V_Norm2(dv, 3) > 0.001 && V_Norm2(dv, 3) < 1.0) {
+		//			std::cout << "大脉冲点，脉冲为" << V_Norm2(dv, 3) << std::endl;
+		//		}*/
 
-				temp_out.time_acc_ = t0;
-				temp_out.point_id_ = 0;
-				temp.node_info_.push_back(temp_out);
+		//		temp_out.time_acc_ = t0;
+		//		temp_out.point_id_ = 0;
+		//		temp.node_info_.push_back(temp_out);
 
-				temp_out2.action_ = 2;
-				temp_out2.time_acc_ = tf;
-				memcpy(temp_out2.rv_acc_, rvf, 6 * sizeof(double));
-				for (int i = 0; i < 3; i++) temp_out2.dv_[i] = 0.0;
-				if (fabs(tf - 86400.0 * 2.0) < 1.0e-5) {
-					temp_out2.action_ = 3;
-					temp_out2.point_id_ = 0;
-				}
-				else {
-					temp_out2.point_id_ = j + 1;
-				}
+		//		temp_out2.action_ = 2;
+		//		temp_out2.time_acc_ = tf;
+		//		memcpy(temp_out2.rv_acc_, rvf, 6 * sizeof(double));
+		//		for (int i = 0; i < 3; i++) temp_out2.dv_[i] = 0.0;
+		//		if (fabs(tf - 86400.0 * 2.0) < 1.0e-5) {
+		//			temp_out2.action_ = 3;
+		//			temp_out2.point_id_ = 0;
+		//		}
+		//		else {
+		//			temp_out2.point_id_ = j + 1;
+		//		}
 
-				//最后一个放tf的子节点
-				temp.node_info_.push_back(temp_out2);
-				
-				child_node_problems.push_back(temp);
-			}
+		//		//最后一个放tf的子节点
+		//		temp.node_info_.push_back(temp_out2);
+		//		
+		//		child_node_problems.push_back(temp);
+		//	}
 
-		}
+		//}
 
 		// 打靶全都失败，则无机动验一次能否可见，如果非空则取第一个值，否则就是真看不到
 		// 如果是求解漏了，可以扩展短时的点，如果就是不可能看到，也可以保证一直有点可以扩展，停止只会因为解不可行
-		if (!total_flag) {
+		if (true) {
 			double t0 = node->problem_.node_info_.back().time_acc_;
 			double rv0[6], rvf[6];
 			memcpy(rv0, node->problem_.node_info_.back().rv_acc_, 6 * sizeof(double));
@@ -496,6 +506,7 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 	/*if (child_node_problems.empty()) {
 		std::cout << "无节点可扩展！" << std::endl;
 	}*/
+	std::sort(child_node_problems.begin(), child_node_problems.end(), sort_Nodes);
 }
 
 /****************************************************************************
