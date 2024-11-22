@@ -172,7 +172,7 @@ void multi_sat_opt() {
 
 	// DE global
 	auto beforeTime = std::chrono::steady_clock::now();
-	DE_parallel(obj_multi_sat_certain, para, X, f, X.size(), 40, 10000, 100);
+	DE_parallel(obj_multi_sat_certain, para, X, f, X.size(), 80, 10000, 100);
 	nlopt_main(obj_multi_sat_certain, para, X, f, X.size(), 10000);
 	//DE_parallel(obj_func_imp_coe, para, X, f, X.size(), 5 * X.size(), 10000, 100);
 	//nlopt_main(obj_func_imp_coe, para, X, f, X.size(), 5 * X.size(), 10000);
@@ -190,7 +190,7 @@ void multi_sat_opt() {
 	//get_revisit_certain(X, para, max_revisit, t_imp, dv, f);
 	
 	//get_revisit_certain_coe(X, X0_dv, para, max_revisit, t_imp, dv, f, coe_list);
-	get_revisit_certain(X0_dv, para, max_revisit, t_imp, dv, f);
+	get_revisit_certain(X, para, max_revisit, t_imp, dv, f);
 
 
 
@@ -215,10 +215,10 @@ void multi_sat_opt() {
 		std::cout << "Target" << index << ": " << *iter << std::endl;
 	}
 
-	// 种群：60
+	// 种群：80
 	// 迭代次数：10000
 	// 0.016s目标函数运行一次
-	// 16核，预计4h完成
+	// 16核，预计3.6h完成
 }
 
 void max_revisit_verify() {
@@ -257,6 +257,6 @@ int main() {
 	// 验收时间：21:00第一次验收，如果继续次日7:00验收
 	//multitree_search();
 	//max_revisit_verify();
-	//multi_sat_opt();
+	multi_sat_opt();
 	return 0;
 }
