@@ -2,6 +2,59 @@
 
 #include <algorithm>
 
+// 计算两个向量之间的距离
+//double distance(const double& x1, const double& y1, const double& z1,
+//    const double& x2, const double& y2, const double& z2) {
+//    return sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2) + pow(z2 - z1, 2));
+//}
+//
+//// 计算两个向量之间的方位角（绕Z轴旋转的角度，单位：弧度）
+//double azimuth(const double& x, const double& y) {
+//    return atan2(y, x);
+//}
+//
+//// 计算两个向量之间的仰角（绕X轴旋转的角度，单位：弧度）
+//double elevation(const double& x, const double& y, const double& z) {
+//    return atan2(z, sqrt(x * x + y * y));
+//}
+
+// 判断点是否在四棱锥视场内
+//bool is_target_visible(const double* rv_sat, const double* r_target, double half_cone_angle_rad) {
+//    // 提取探测点和被观测点的位置速度
+//    double rv_sat_x = rv_sat[0];
+//    double rv_sat_y = rv_sat[1];
+//    double rv_sat_z = rv_sat[2];
+//    double r_target_x = r_target[0];
+//    double r_target_y = r_target[1];
+//    double r_target_z = r_target[2];
+//
+//    // 计算目标点到地心的距离
+//    double distance_to_target = distance(0.0, 0.0, 0.0, r_target_x, r_target_y, r_target_z);
+//
+//    // 计算观测点的方位角和仰角
+//    double azimuth_sat = azimuth(rv_sat_x, rv_sat_y);
+//    double elevation_sat = elevation(rv_sat_x, rv_sat_y, rv_sat_z);
+//
+//    // 计算目标点相对于观测点的方向向量
+//    double direction_vector_x = r_target_x - rv_sat_x;
+//    double direction_vector_y = r_target_y - rv_sat_y;
+//    double direction_vector_z = r_target_z - rv_sat_z;
+//
+//    // 计算目标点相对于观测点的方位角和仰角
+//    double target_azimuth = azimuth(direction_vector_x, direction_vector_y);
+//    double target_elevation = elevation(direction_vector_x, direction_vector_y, direction_vector_z);
+//
+//    // 定义四棱锥的半锥角（单位：弧度）
+//    double half_cone_angle = half_cone_angle_rad;
+//
+//    // 判断目标点是否在四棱锥视场内
+//    if (abs(target_azimuth - azimuth_sat) <= half_cone_angle && target_elevation >= elevation_sat - half_cone_angle) {
+//        return true;
+//    }
+//
+//    return false;
+//}
+
 // 矩形视角的可见性
 bool is_target_visible(const double* rv_sat, const double* rv_target, double half_cone_angle_rad) {
     const double r_sat[3] = { rv_sat[0], rv_sat[1], rv_sat[2] };
@@ -64,9 +117,19 @@ void AccessPointObjects(
 ) {
     results.resize(num_targets);
 
-    double t = t_start;
+    double t;
+    
     double rv_sat[6];
     memcpy(rv_sat, rv0, 6 * sizeof(double));
+
+    if (fmod(t_start, dt) < 1.0e-10) {
+        t = t_start;
+    }
+    else {
+        // t不是60的倍数，先进它的下一个60s
+        t = t_start - fmod(t_start, dt) + dt;
+        propagate_j2(rv_sat, rv_sat, t_start, t);
+    }
 
     // 定义卫星的半视场角（例如 10 度，转换为弧度）
     //double half_cone_angle = 20.0 * D2R; //留一些余量
@@ -74,7 +137,8 @@ void AccessPointObjects(
     // 传播卫星到时间 t
     double rv_sat_t[6];
 
-    memcpy(rv_sat_t, rv0, 6 * sizeof(double));
+    memcpy(rv_sat_t, rv_sat, 6 * sizeof(double));
+    
 
     // 循环时间步
     while (true) {
@@ -98,8 +162,8 @@ void AccessPointObjects(
                 //get_target_R(target_id, t, rv_target);
                 // 判断可见性
                 if (is_target_visible(rv_sat_t, rv_target, half_cone_angle)) {
-                    // 目标可见，记录结果
-                    results[target_id].push_back(t);
+                    // 目标可见，记录结
+                        results[target_id].push_back(t);
                 }
            // }
         }

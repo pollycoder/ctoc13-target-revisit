@@ -414,7 +414,7 @@ void get_revisit_certain(const std::vector<double>& X, const int* para, std::vec
 			memcpy(coe, sats_coe0[i], 6 * sizeof(double));
 			coe2rv(flag, rv0, coe, mu_km_s);
 			std::vector <std::vector<double>> visible_list_current;
-			AccessPointObjects(rv0, 0.0, 2.0 * 86400.0, 60.0, 21, visible_list_current, 20.3 * D2R);
+			AccessPointObjects(rv0, 0.0, 2.0 * 86400.0, 60.0, 21, visible_list_current, 20.5 * D2R);
 			for (int j = 0; j < 21; j++) {
 				visible_list[j].insert(visible_list[j].end(), visible_list_current[j].begin(), visible_list_current[j].end());
 			}
@@ -490,9 +490,9 @@ void get_revisit_certain_coe(const std::vector<double>& X, const std::vector<dou
 
 			double p[6];
 			memcpy(p, sats_coe0[i], 6 * sizeof(double));
-			p[3] += (X[imp_num * 3] - 0.5) * DPI / 10.0;
-			p[4] += (X[imp_num * 3 + 1] - 0.5) * DPI / 10.0;
-			p[5] += (X[imp_num * 3 + 2] - 0.5) * DPI / 10.0;
+			p[3] += (X[imp_num * 3] - 0.5) * DPI;
+			p[4] += (X[imp_num * 3 + 1] - 0.5) * DPI;
+			p[5] += (X[imp_num * 3 + 2] - 0.5) * DPI;
 			pert_single_sat(X_current, p, t_imp_current, dv_current, coe0_current);
 
 			get_imp_trajectory(flag, rv0_current, coe0_current, rv_imp_current, t_imp_current, dv_current, peri, apo);
@@ -504,8 +504,8 @@ void get_revisit_certain_coe(const std::vector<double>& X, const std::vector<dou
 			const std::vector<double> dv_current_vec = { dv_current[0], dv_current[1], dv_current[2] };
 			std::vector <std::vector<double>> visible_list_current;
 			std::vector<std::vector<double>> append_list_current;
-			AccessPointObjects(rv0_current, 0.0, t_imp_current, 60.0, 21, visible_list_current, 20.5 * D2R);
-			AccessPointObjects(rv_imp_current, t_imp_current, 2.0 * 86400.0, 60.0, 21, append_list_current, 20.5 * D2R);
+			AccessPointObjects(rv0_current, 0.0, t_imp_current, 60.0, 21, visible_list_current, 20.2 * D2R);
+			AccessPointObjects(rv_imp_current, t_imp_current, 2.0 * 86400.0, 60.0, 21, append_list_current, 20.2 * D2R);
 			for (int j = 0; j < 21; j++) {
 				visible_list[j].insert(visible_list[j].end(), visible_list_current[j].begin(), visible_list_current[j].end());
 				visible_list[j].insert(visible_list[j].end(), append_list_current[j].begin(), append_list_current[j].end());
@@ -522,7 +522,7 @@ void get_revisit_certain_coe(const std::vector<double>& X, const std::vector<dou
 			int flag;
 			double coe[6];
 			memcpy(coe, sats_coe0[i], 6 * sizeof(double));
-			//coe[3] += (X[i] - 0.5) * DPI / 10.0;
+			//coe[3] += (X[i] - 0.5) * DPI;
 			coe2rv(flag, rv0, coe, mu_km_s);
 			std::vector <std::vector<double>> visible_list_current;
 			AccessPointObjects(rv0, 0.0, 2.0 * 86400.0, 60.0, 21, visible_list_current, 20.3 * D2R);

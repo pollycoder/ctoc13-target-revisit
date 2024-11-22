@@ -151,12 +151,31 @@ void multi_sat_opt() {
 		imp_idx.push_back(para[i]);
 	}
 
-	double f;
+	double f; 
+
+	std::vector<double> X0_dv = { 0.388006583243354,
+ 0.580287233718683,
+ 0.256041060231598,
+ 0.0690127584672896,
+ 0.287669938799895,
+ 0.284005073152357,
+ 0.355947048888501,
+ 0.863257478506611,
+ 0.570483804523302,
+ 0.412280551837887,
+ 0.671229063980333,
+ 0.00215954482790373,
+ 0.144553532507848,
+ 0.723825325437608,
+ 0.479182095558075,
+ 0.557197591452098 };
 
 	// DE global
 	auto beforeTime = std::chrono::steady_clock::now();
-	DE_parallel(obj_multi_sat_certain, para, X, f, X.size(), 10 * X.size(), 10000, 50);
-	nlopt_main(obj_multi_sat_certain, para, X, f, X.size(), 5000);
+	DE_parallel(obj_multi_sat_certain, para, X, f, X.size(), 40, 10000, 100);
+	nlopt_main(obj_multi_sat_certain, para, X, f, X.size(), 10000);
+	//DE_parallel(obj_func_imp_coe, para, X, f, X.size(), 5 * X.size(), 10000, 100);
+	//nlopt_main(obj_func_imp_coe, para, X, f, X.size(), 5 * X.size(), 10000);
 	auto afterTime = std::chrono::steady_clock::now();
 	double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
 	std::cout << "总耗时：" << duration_second << "秒" << std::endl;
@@ -164,17 +183,28 @@ void multi_sat_opt() {
 	std::vector<double> max_revisit;
 	std::vector<double> t_imp;
 	std::vector<std::vector<double>> dv;
+	std::vector<std::vector<double>> coe_list;
 	
-	//DE_parallel(obj_func_imp_coe, para, X, f, X.size(), 5 * X.size(), 10000, 100);
-	get_revisit_certain(X, para, max_revisit, t_imp, dv, f);
+	
+
+	//get_revisit_certain(X, para, max_revisit, t_imp, dv, f);
+	
+	//get_revisit_certain_coe(X, X0_dv, para, max_revisit, t_imp, dv, f, coe_list);
+	get_revisit_certain(X0_dv, para, max_revisit, t_imp, dv, f);
+
+
 
 	std::ofstream fout0("../output_result/result.txt");
 	int idx = 0;
 	for (int i = 0; i < TreeNum; i++) {
-		fout0 << sats_coe0[i][0] << " " << sats_coe0[i][1] << " " << sats_coe0[i][2] << " " << sats_coe0[i][3] << " " << sats_coe0[i][4] << " " << sats_coe0[i][5] << std::endl;
+		fout0 << std::setprecision(14) << sats_coe0[i][0] << " " << sats_coe0[i][1] << " " << sats_coe0[i][2] << " " << sats_coe0[i][3] << " " << sats_coe0[i][4] << " " << sats_coe0[i][5] << std::endl;
+		//fout0 << std::setprecision(14) << coe_list[i][0] << " " << coe_list[i][1] << " " << coe_list[i][2] << " " << coe_list[i][3] << " " << coe_list[i][4] << " " << coe_list[i][5] << std::endl;
 		if (std::find(imp_idx.begin(), imp_idx.end(), i) != imp_idx.end()) {
-			fout0 << t_imp[idx] << " " << dv[idx][0] << " " << dv[idx][1] << " " << dv[idx][2] << std::endl;
+			fout0 << std::setprecision(14) << t_imp[idx] << " " << dv[idx][0] << " " << dv[idx][1] << " " << dv[idx][2] << std::endl;
 			idx++;
+		}
+		else {
+			fout0 << std::setprecision(14) << 0.0 << " " << 0.0 << " " << 0.0 << std::endl;
 		}
 	}
 
@@ -185,10 +215,10 @@ void multi_sat_opt() {
 		std::cout << "Target" << index << ": " << *iter << std::endl;
 	}
 
-	// 种群：160
+	// 种群：60
 	// 迭代次数：10000
 	// 0.016s目标函数运行一次
-	// 16核，预计8h完成
+	// 16核，预计4h完成
 }
 
 void max_revisit_verify() {
@@ -222,9 +252,9 @@ int main() {
 
 	// 核数：16核
 	// 任务：
-	//	1. 树搜索，
-	// 开始时间：15:00
-	// 第一次验收时间：21:00
+	//	1. 机动优化，
+	// 开始时间：17:00
+	// 验收时间：21:00第一次验收，如果继续次日7:00验收
 	//multitree_search();
 	//max_revisit_verify();
 	multi_sat_opt();
