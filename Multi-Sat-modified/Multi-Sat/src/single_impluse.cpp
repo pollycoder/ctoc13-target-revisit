@@ -919,7 +919,7 @@ void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& 
 		// ¼ÆËãµØÐÄ½Ç·¶Î§beta
 		double R0[3] = { RV0[0], RV0[1], RV0[2] };
 		double r = V_Norm2(R0, 3);
-		double gamma = 20.5 * D2R;
+		double gamma = 20.0 * D2R;
 		double beta = asin(r * sin(gamma) / Re_km) - gamma;
 		int mesh_size = 20, flag_temp = 0;
 		double dv_norm = 1.0e10;
