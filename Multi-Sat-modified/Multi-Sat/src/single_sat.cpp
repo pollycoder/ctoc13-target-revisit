@@ -211,343 +211,140 @@ bool filter_bin_file(const std::string& input_filename, const std::string& outpu
 	return true;
 }
 
-
-// Tool functions (static)
-static void pert_single_sat(const std::vector<double>& X, const double* para, double& t, double* dv, double* coe0) {
-	for (int i = 0; i < 6; i++) coe0[i] = para[i];
-	const double dt = 43200.0;										// 时间最大扰动：前后6小时
-	const double d_imp = 2.0 / sqrt(3);										// 脉冲分量最大扰动：上下0.5km/s
-	//t = para[6] + (X[0] - 0.5) * dt;
-	t = X[0] * 172800.0;
-	dv[0] = (X[1] - 0.5) * d_imp;
-	dv[1] = (X[2] - 0.5) * d_imp;
-	dv[2] = (X[3] - 0.5) * d_imp;
-}
-
-void get_imp_trajectory(int& flag, double* rv0, const double* coe0, double* rv_imp, double& t_imp, double* dv, double& peri, double& apo)
-{
-	coe2rv(flag, rv0, coe0, mu_km_s);
-	propagate_j2(rv0, rv_imp, 0.0, t_imp);
-	for (int i = 0; i < 3; i++) rv_imp[i + 3] += dv[i];
-	double coe_imp[6], a, e;
-	rv2coe(flag, coe_imp, rv_imp, mu_km_s);
-	a = coe_imp[0];
-	e = coe_imp[1];
-	peri = a * (1 - e) - Re_km;
-	apo = a * (1 + e) - Re_km;
-}
-
-double obj_single_sat(const std::vector<double>& X, std::vector<double>& grad, void* f_data) {
-	const double* para = static_cast<double*>(f_data);
-	double t_impulse, dv[3], mean;
-	std::vector<double> max_revisit;
-	get_revisit(X, para, max_revisit, t_impulse, dv, mean);
-
-	return mean;
-}
-
-void get_revisit(const std::vector<double>& X, const double* para, std::vector<double>& max_revisit, double& t_imp, double* dv, double& score) {
-	double coe0[6], rv0[6], rv_imp[6], peri, apo;
-	pert_single_sat(X, para, t_imp, dv, coe0);
+void AccessTableSingleSat(const double* coe0, const std::vector<std::vector<double>>& t_dv_list, std::vector<std::vector<double>>& AccessTable, double& score) {
 	int flag;
-	get_imp_trajectory(flag, rv0, coe0, rv_imp, t_imp, dv, peri, apo);
-	if (peri < 201.0 || apo > 999.0) {
-		score =  penalty;
+	double rv0[6], rv0_temp[6], rv_imp[6];															// 初始位置速度，脉冲点位置速度
+	std::vector<std::vector<double>> timetable_temp;
+
+	AccessTable.clear();
+	AccessTable.resize(TargetNum);
+
+
+	coe2rv(flag, rv0, coe0, mu_km_s);						
+	memcpy(rv0_temp, rv0, 6 * sizeof(double));
+	if (t_dv_list.empty()) {
+		AccessPointObjects(rv0, 0.0, 172800.0, 60.0, TargetNum, AccessTable, 20.5 * D2R);
 		return;
 	}
 
-	std::vector <std::vector<double>> visible_list;
-	std::vector<std::vector<double>> append_list;
-	AccessPointObjects(rv0, 0.0, t_imp, 60.0, 21, visible_list);
-	AccessPointObjects(rv_imp, t_imp, 2.0 * 86400.0, 60.0, 21, append_list);
-	for (int i = 0; i < 21; i++) {
-		visible_list[i].insert(visible_list[i].end(), append_list[i].begin(), append_list[i].end());
-	}
+	double t0 = 0, tf = t_dv_list[0][0];
 
-	max_reseetime(visible_list, max_revisit);
-
-	double sum = std::accumulate(max_revisit.begin(), max_revisit.end(), 0.0);
-	score = sum / 21.0;
-	
-}
-
-
-// 优化多颗星单次机动
-// 输入参数（7个一循环）：
-//		f_data[0-5]：轨道根数
-//		f_data[6]：脉冲时间
-// 优化变量（4个一循环）：
-//		t：脉冲时间，初值暂定为1天，扰动范围6小时
-//		dv[3]：脉冲3个分量，初值为0，扰动范围0.5km/s
-// 目标：
-//		t_gap_ave：平均每个目标的重访时间
-// 约束：
-//		h：轨道高度，200km-1000km
-//		dv：脉冲不大于1km/s（扰动范围注定不会发生此问题，忽略）
-double obj_multi_sat(const std::vector<double>& X, std::vector<double>& grad, void* f_data) {
-	const double* para = static_cast<double*>(f_data);
-	double f;
-	std::vector<std::vector<double>> dv_list;
-	std::vector<double> t_imp_list, max_revisit;
-	get_revisit(X, para, max_revisit, t_imp_list, dv_list, f);
-	return f;
-}
-
-void get_revisit(const std::vector<double>& X, const double* para, std::vector<double>& max_revisit, std::vector<double>& t_imp, std::vector<std::vector<double>>& dv, double& score) {
-	const int paranum_group = 7;
-	const int varnum_group = 4;
-	score = 0.0;
-	
-	std::vector<std::vector<double>> visible_list;
-	visible_list.resize(21);
-	int flag;
-
-	for (int i = 0; i < TreeNum; i++) {
-		std::vector<double> X_current;
-		for (int j = 0; j < varnum_group; j++) X_current.push_back(X[i * varnum_group + j]);
-
-		double coe0_current[6], rv0_current[6], t_imp_current,
-			   dv_current[3], rv_imp_current[6], peri, apo;
-		double para_current[paranum_group];
-		for (int j = 0; j < paranum_group; j++) para_current[j] = para[i * paranum_group + j];
-
-		pert_single_sat(X_current, para_current, t_imp_current, dv_current, coe0_current);
-
-		get_imp_trajectory(flag, rv0_current, coe0_current, rv_imp_current, t_imp_current, dv_current, peri, apo);
-		
-		double lb = 201.0, ub = 999.0;
-		score += (std::max(apo, ub) - ub) * (std::max(apo, ub) - ub);
-		score += (std::min(peri, lb) - lb) * (std::min(peri, lb) - lb);
-		
-		
-
-		const std::vector<double> dv_current_vec = { dv_current[0], dv_current[1], dv_current[2] };
-		std::vector <std::vector<double>> visible_list_current;
-		std::vector<std::vector<double>> append_list_current;
-		AccessPointObjects(rv0_current, 0.0, t_imp_current, 60.0, 21, visible_list_current);
-		AccessPointObjects(rv_imp_current, t_imp_current, 2.0 * 86400.0, 60.0, 21, append_list_current);
-		for (int i = 0; i < 21; i++) {
-			visible_list[i].insert(visible_list[i].end(), visible_list_current[i].begin(), visible_list_current[i].end());
-			visible_list[i].insert(visible_list[i].end(), append_list_current[i].begin(), append_list_current[i].end());
+	// 求解流程：rv0 -> time table -> rvf -> dv
+	for (int i = 0; i < t_dv_list.size() + 1; i++) {
+		timetable_temp.clear();
+		AccessPointObjects(rv0_temp, t0, tf, 60.0, 21, timetable_temp, 20.5 * D2R);
+		for (int j = 0; j < TargetNum; j++) {
+			AccessTable[j].insert(AccessTable[j].end(), timetable_temp[j].begin(), timetable_temp[j].end());
 		}
 
-		t_imp.push_back(t_imp_current);
-		dv.push_back(dv_current_vec);
-	}
-
-	for (int i = 0; i < 21; i++) {
-		std::sort(visible_list[i].begin(), visible_list[i].end());
-	}
-
-	max_reseetime(visible_list, max_revisit);
-	for (int i = 0; i < TargetNum; i++) {
-		if (i != TargetNum - 1) {
-			score -= 6.0 / std::max(6.0, max_revisit[i]) * 4.0;					// 地面：小于6h，记满分，否则减分
+		//std::cout << "t0 = " << t0 << " tf = " << tf << std::endl;
+		propagate_j2(rv0_temp, rv_imp, t0, tf);
+		t0 = tf;
+		if (i == t_dv_list.size()) {
+			return;
 		}
 		else {
-			score -= 3.0 / std::max(3.0, max_revisit[i]) * 20.0;					// ship：小于3h，记满分，否则减分
-		}
-	}
-}
-
-
-double obj_multi_sat_certain(const std::vector<double>& X, std::vector<double>& grad, void* f_data) {
-	const int* para = static_cast<int*>(f_data);
-	double f;
-	std::vector<std::vector<double>> dv_list;
-	std::vector<double> t_imp_list, max_revisit;
-	get_revisit_certain(X, para, max_revisit, t_imp_list, dv_list, f);
-	return f;
-}
-
-
-
-void get_revisit_certain(const std::vector<double>& X, const int* para, std::vector<double>& max_revisit,
-	std::vector<double>& t_imp, std::vector<std::vector<double>>& dv, double& score) {
-	const int varnum_group = 4;
-	score = 0.0;
-
-	std::vector<int> sat_id_imp;
-	for (int i = 0; i < impNum; i++) sat_id_imp.push_back(para[i]);
-
-	std::vector<std::vector<double>> visible_list;
-	visible_list.resize(21);
-	int flag;
-
-	int imp_num = 0;
-	for (int i = 0; i < TreeNum; i++) {
-		if (std::find(sat_id_imp.begin(), sat_id_imp.end(), i) != sat_id_imp.end()) {		// 带机动的星
-			std::vector<double> X_current;
-			for (int j = 0; j < varnum_group; j++) X_current.push_back(X[imp_num * varnum_group + j]);
-
-			double coe0_current[6], rv0_current[6], t_imp_current,
-				dv_current[3], rv_imp_current[6], peri, apo;
-
-			double p[6];
-			memcpy(p, sats_coe0[i], 6 * sizeof(double));
-			pert_single_sat(X_current, p, t_imp_current, dv_current, coe0_current);
-
-			get_imp_trajectory(flag, rv0_current, coe0_current, rv_imp_current, t_imp_current, dv_current, peri, apo);
-
-			double lb = 200.0, ub = 1000.0;
-			score += (std::max(apo, ub) - ub) * (std::max(apo, ub) - ub);
-			score += (std::min(peri, lb) - lb) * (std::min(peri, lb) - lb);
-
-			const std::vector<double> dv_current_vec = { dv_current[0], dv_current[1], dv_current[2] };
-			std::vector <std::vector<double>> visible_list_current;
-			std::vector<std::vector<double>> append_list_current;
-			AccessPointObjects(rv0_current, 0.0, t_imp_current, 60.0, 21, visible_list_current, 20.5 * D2R);
-			AccessPointObjects(rv_imp_current, t_imp_current, 2.0 * 86400.0, 60.0, 21, append_list_current, 20.5 * D2R);
-			for (int j = 0; j < 21; j++) {
-				visible_list[j].insert(visible_list[j].end(), visible_list_current[j].begin(), visible_list_current[j].end());
-				visible_list[j].insert(visible_list[j].end(), append_list_current[j].begin(), append_list_current[j].end());
-			}
-
-			t_imp.push_back(t_imp_current);
-			dv.push_back(dv_current_vec);
-			imp_num++;
-		}
-		else {
-			double rv0[6];
-			int flag;
+			if (i == t_dv_list.size() - 1) tf = 172800.0;
+			else tf = t_dv_list[i + 1][0];
+			for (int j = 0; j < 3; j++) rv_imp[j + 3] += t_dv_list[i][j + 1];
 			double coe[6];
-			memcpy(coe, sats_coe0[i], 6 * sizeof(double));
-			coe2rv(flag, rv0, coe, mu_km_s);
-			std::vector <std::vector<double>> visible_list_current;
-			AccessPointObjects(rv0, 0.0, 2.0 * 86400.0, 60.0, 21, visible_list_current, 20.5 * D2R);
-			for (int j = 0; j < 21; j++) {
-				visible_list[j].insert(visible_list[j].end(), visible_list_current[j].begin(), visible_list_current[j].end());
-			}
+			rv2coe(flag, coe, rv_imp, mu_km_s);
+			const double apo = coe[0] * (1 + coe[1]) - Re_km;
+			const double peri = coe[0] * (1 - coe[1]) - Re_km;
+			score += (std::max(apo, hmax) - hmax) * (std::max(apo, hmax) - hmax);
+			score += (std::min(peri, hmin) - hmin) * (std::min(peri, hmin) - hmin);
 		}
-	}
-	
-	for (int i = 0; i < TargetNum; i++) {
-		std::sort(visible_list[i].begin(), visible_list[i].end());
-	}
-	max_reseetime(visible_list, max_revisit);
-	for (int i = 0; i < TargetNum; i++) {
-		if (i != TargetNum - 1) {
-			score -= 6.0 / std::max(6.0, max_revisit[i]) * 4.0;					// 地面：小于6h，记满分，否则减分
-		}
-		else {
-			score -= 3.0 / std::max(3.0, max_revisit[i]) * 20.0;					// ship：小于3h，记满分，否则减分
-		}
+
+		memcpy(rv0_temp, rv_imp, 6 * sizeof(double));
 	}
 }
 
 
-double obj_func_imp_coe(const std::vector<double>& X, std::vector<double>& grad, void* f_data) {
+void AccessTableMultiSat(const std::vector<std::tuple<std::vector<double>, std::vector<std::vector<double>>>>& sat_info_list, std::vector<std::vector<double>>& AccessTable, double& score) {
+	AccessTable.clear();
+	AccessTable.resize(TargetNum);
+	for (const auto& sat : sat_info_list) {
+		std::vector<std::vector<double>> accesstable_temp;
+		const std::vector<double> coe0_vec = std::get<0>(sat);
+		const std::vector<std::vector<double>> t_dv_list = std::get<1>(sat);
+		const double coe0[6] = { coe0_vec[0], coe0_vec[1], coe0_vec[2], coe0_vec[3], coe0_vec[4], coe0_vec[5] };
+		AccessTableSingleSat(coe0, t_dv_list, accesstable_temp, score);
+		for (int i = 0; i < TargetNum; i++) {
+			AccessTable[i].insert(AccessTable[i].end(), accesstable_temp[i].begin(), accesstable_temp[i].end());
+		}
+	}
 
-	std::vector<double> X0_dv = { 0.0219720091589485,
-0.365642344394979,
-0.703778433294802,
-0.727745322434612,
-0.530030217975705,
-0.180008316690934,
-0.341787214183994,
- 0.928207449096013,
-0.477177100366032,
- 0.561344019885849,
-0.323876731106216,
-0.644181304570462,
-0.271460475085976,
- 0.476403063212604,
- 0.412335356727174,
-0.341954862280587 };
+	for (auto& row : AccessTable) {
+		std::sort(row.begin(), row.end());
+	}
+}
 
-	int para[impNum] = { 4, 5, 6, 7 };
-	std::vector<double> max_revisit;
-	std::vector<double> t_imp;
-	std::vector<std::vector<double>> dv;
-	double f;
-	std::vector<std::vector<double>> result_coe;
+double obj_func(const std::vector<double>& X, std::vector<double>& grad, void* f_data) {
+	//auto beforeTime = std::chrono::steady_clock::now();
+	double* para = static_cast<double*>(f_data);
+	double score;
+	std::vector<std::tuple<std::vector<double>, std::vector<std::vector<double>>>> sat_info_list;
+	std::vector<std::vector<double>> AccessTable;
 
-	get_revisit_certain_coe(X, X0_dv, para, max_revisit, t_imp, dv, f, result_coe);
-	return f;
+	get_score_info(X, para, score, sat_info_list, AccessTable);
+	// afterTime = std::chrono::steady_clock::now();
+	//double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
+	//std::cout << duration_second << std::endl;
+	return score;
 }
 
 
-void get_revisit_certain_coe(const std::vector<double>& X, const std::vector<double>& X0_dv, const int* para, std::vector<double>& max_revisit,
-	std::vector<double>& t_imp, std::vector<std::vector<double>>& dv, double& score, std::vector<std::vector<double>>& coe_result) {
-	const int varnum_group = 4;
+void get_one_sat(int& i, const std::vector<double>& X, int& imp, int& imp_idx, double& score, std::vector<std::vector<double>>& t_dv, std::vector<double>& coe0, std::vector<std::tuple<std::vector<double>, std::vector<std::vector<double>>>>& sat_info_list)
+{
+	// 如果是脉冲星,按照次数加入脉冲信息，不是则信息表为空
+	if (std::find(imp_sat.begin(), imp_sat.end(), i) != imp_sat.end()) {
+		double t_temp = 0.0;
+		for (int j = 0; j < imp_num[imp_idx]; j++) {
+			t_temp += X[imp * 4] * 172800.0;
+			score += (std::max(t_temp, 172800.0) - 172800.0) * (std::max(t_temp, 172800.0) - 172800.0);
+			double dv[3] = {
+				(X[imp * 4 + 1] - 0.5) * imp_max,
+				(X[imp * 4 + 2] - 0.5) * imp_max,
+				(X[imp * 4 + 3] - 0.5) * imp_max
+			};
+			std::vector<double> t_dv_one = { t_temp, dv[0], dv[1], dv[2] };
+			t_dv.push_back(t_dv_one);
+			imp++;
+		}
+		imp_idx++;
+	} 
+
+	std::tuple<std::vector<double>, std::vector<std::vector<double>>> sat = std::make_tuple(coe0, t_dv);
+	sat_info_list.push_back(sat);
+}
+
+void get_score_info(const std::vector<double>& X, double* f_data, double& score,
+	std::vector<std::tuple<std::vector<double>, std::vector<std::vector<double>>>>& sat_info_list,
+	std::vector<std::vector<double>>& AccessTable) {
 	score = 0.0;
 
-	std::vector<int> sat_id_imp;
-	for (int i = 0; i < impNum; i++) sat_id_imp.push_back(para[i]);
-
-	std::vector<std::vector<double>> visible_list;
-	visible_list.resize(21);
-	int flag;
-
-	int imp_num = 0;
+	int imp = 0;											// 记录已加脉冲的次数
+	int imp_idx = 0;										// 记录已加脉冲星的个数
 	for (int i = 0; i < TreeNum; i++) {
-		if (std::find(sat_id_imp.begin(), sat_id_imp.end(), i) != sat_id_imp.end()) {		// 带机动的星
-			std::vector<double> X_current;
-			for (int j = 0; j < varnum_group; j++) X_current.push_back(X0_dv[imp_num * varnum_group + j]);
+		std::vector<double> coe0;
+		for (int j = 0; j < 6; j++) coe0.push_back(sats_coe0[i][j]);
+		std::vector<std::vector<double>> t_dv;
 
-			double coe0_current[6], rv0_current[6], t_imp_current,
-				dv_current[3], rv_imp_current[6], peri, apo;
-
-			double p[6];
-			memcpy(p, sats_coe0[i], 6 * sizeof(double));
-			p[3] += (X[imp_num * 3] - 0.5) * DPI;
-			p[4] += (X[imp_num * 3 + 1] - 0.5) * DPI;
-			p[5] += (X[imp_num * 3 + 2] - 0.5) * DPI;
-			pert_single_sat(X_current, p, t_imp_current, dv_current, coe0_current);
-
-			get_imp_trajectory(flag, rv0_current, coe0_current, rv_imp_current, t_imp_current, dv_current, peri, apo);
-
-			double lb = 200.0, ub = 1000.0;
-			score += (std::max(apo, ub) - ub) * (std::max(apo, ub) - ub);
-			score += (std::min(peri, lb) - lb) * (std::min(peri, lb) - lb);
-
-			const std::vector<double> dv_current_vec = { dv_current[0], dv_current[1], dv_current[2] };
-			std::vector <std::vector<double>> visible_list_current;
-			std::vector<std::vector<double>> append_list_current;
-			AccessPointObjects(rv0_current, 0.0, t_imp_current, 60.0, 21, visible_list_current, 20.2 * D2R);
-			AccessPointObjects(rv_imp_current, t_imp_current, 2.0 * 86400.0, 60.0, 21, append_list_current, 20.2 * D2R);
-			for (int j = 0; j < 21; j++) {
-				visible_list[j].insert(visible_list[j].end(), visible_list_current[j].begin(), visible_list_current[j].end());
-				visible_list[j].insert(visible_list[j].end(), append_list_current[j].begin(), append_list_current[j].end());
-			}
-
-			t_imp.push_back(t_imp_current);
-			dv.push_back(dv_current_vec);
-			std::vector<double> coe_list = { p[0], p[1], p[2], p[3], p[4], p[5] };
-			coe_result.push_back(coe_list);
-			imp_num++;
-		}
-		else {
-			double rv0[6];
-			int flag;
-			double coe[6];
-			memcpy(coe, sats_coe0[i], 6 * sizeof(double));
-			//coe[3] += (X[i] - 0.5) * DPI;
-			coe2rv(flag, rv0, coe, mu_km_s);
-			std::vector <std::vector<double>> visible_list_current;
-			AccessPointObjects(rv0, 0.0, 2.0 * 86400.0, 60.0, 21, visible_list_current, 20.3 * D2R);
-			for (int j = 0; j < 21; j++) {
-				visible_list[j].insert(visible_list[j].end(), visible_list_current[j].begin(), visible_list_current[j].end());
-			}
-			std::vector<double> coe_list = { coe[0], coe[1], coe[2], coe[3], coe[4], coe[5] };
-			coe_result.push_back(coe_list);
-		}
+		get_one_sat(i, X, imp, imp_idx, score, t_dv, coe0, sat_info_list);
 	}
 
-	for (int i = 0; i < TargetNum; i++) {
-		std::sort(visible_list[i].begin(), visible_list[i].end());
+	AccessTableMultiSat(sat_info_list, AccessTable, score);
+	
+	std::vector<double> max_revisit_gap;
+	max_reseetime(AccessTable, max_revisit_gap);
+	int idx = 0;
+	for (const auto& gap : max_revisit_gap) {
+		idx++;
+		if (idx != TargetNum) 
+			score -= 4.0 * 6.0 / std::max(6.0, gap);
+		else
+			score -= 20.0 * 3.0 / std::max(3.0, gap);
+		
 	}
-	max_reseetime(visible_list, max_revisit);
-	for (int i = 0; i < TargetNum; i++) {
-		if (i != TargetNum - 1) {
-			score -= 6.0 / std::max(6.0, max_revisit[i]) * 4.0;					// 地面：小于6h，记满分，否则减分
-		}
-		else {
-			score -= 3.0 / std::max(3.0, max_revisit[i]) * 20.0;					// ship：小于3h，记满分，否则减分
-		}
-	}
+
 }
-
-
-
-

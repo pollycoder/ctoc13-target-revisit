@@ -227,6 +227,9 @@
     <ClInclude Include="include\single_sat.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="src\main.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="bin\nlopt.dll" />

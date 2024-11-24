@@ -231,6 +231,7 @@
     <ClInclude Include="include\single_impluse.h" />
     <ClInclude Include="include\single_sat.h" />
     <ClInclude Include="include\visibility_4_targets.h" />
+    <ClInclude Include="src\main.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="bin\nlopt.dll" />
