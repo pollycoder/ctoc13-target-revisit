@@ -147,35 +147,35 @@ void multi_sat_opt() {
 	std::vector<double> X;
 	std::vector<int> imp_idx;
 	for (int i = 0; i < impNum; i++) {
-		for (int j = 0; j < 4; j++) X.push_back(0.5);
+		for (int j = 0; j < 3; j++) X.push_back(0.5);
 		imp_idx.push_back(para[i]);
 	}
 
 	double f; 
 
-	std::vector<double> X0_dv = { 0.388006583243354,
- 0.580287233718683,
- 0.256041060231598,
- 0.0690127584672896,
- 0.287669938799895,
- 0.284005073152357,
- 0.355947048888501,
- 0.863257478506611,
- 0.570483804523302,
- 0.412280551837887,
- 0.671229063980333,
- 0.00215954482790373,
- 0.144553532507848,
- 0.723825325437608,
- 0.479182095558075,
- 0.557197591452098 };
+	std::vector<double> X0_dv = { 0.0219720091589485,
+0.365642344394979,
+0.703778433294802,
+0.727745322434612,
+0.530030217975705,
+0.180008316690934,
+0.341787214183994,
+ 0.928207449096013,
+0.477177100366032,
+ 0.561344019885849,
+0.323876731106216,
+0.644181304570462,
+0.271460475085976,
+ 0.476403063212604,
+ 0.412335356727174,
+0.341954862280587};
 
 	// DE global
 	auto beforeTime = std::chrono::steady_clock::now();
-	DE_parallel(obj_multi_sat_certain, para, X, f, X.size(), 80, 10000, 100);
-	nlopt_main(obj_multi_sat_certain, para, X, f, X.size(), 10000);
-	//DE_parallel(obj_func_imp_coe, para, X, f, X.size(), 5 * X.size(), 10000, 100);
-	//nlopt_main(obj_func_imp_coe, para, X, f, X.size(), 5 * X.size(), 10000);
+	//DE_parallel(obj_multi_sat_certain, para, X, f, X.size(), 80, 10000, 100);
+	//nlopt_main(obj_multi_sat_certain, para, X0_dv, f, X.size(), 10000);
+	DE_parallel(obj_func_imp_coe, para, X, f, X.size(), 5 * X.size(), 10000, 100);
+	nlopt_main(obj_func_imp_coe, para, X, f, X.size(), 5 * X.size(), 10000);
 	auto afterTime = std::chrono::steady_clock::now();
 	double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
 	std::cout << "×ÜºÄÊ±£º" << duration_second << "Ãë" << std::endl;
@@ -189,16 +189,18 @@ void multi_sat_opt() {
 
 	//get_revisit_certain(X, para, max_revisit, t_imp, dv, f);
 	
-	//get_revisit_certain_coe(X, X0_dv, para, max_revisit, t_imp, dv, f, coe_list);
-	get_revisit_certain(X, para, max_revisit, t_imp, dv, f);
+	get_revisit_certain_coe(X, X0_dv, para, max_revisit, t_imp, dv, f, coe_list);
+	//get_revisit_certain(X0_dv, para, max_revisit, t_imp, dv, f);
+
+	std::cout << "f = " << f << std::endl;
 
 
 
 	std::ofstream fout0("../output_result/result.txt");
 	int idx = 0;
 	for (int i = 0; i < TreeNum; i++) {
-		fout0 << std::setprecision(14) << sats_coe0[i][0] << " " << sats_coe0[i][1] << " " << sats_coe0[i][2] << " " << sats_coe0[i][3] << " " << sats_coe0[i][4] << " " << sats_coe0[i][5] << std::endl;
-		//fout0 << std::setprecision(14) << coe_list[i][0] << " " << coe_list[i][1] << " " << coe_list[i][2] << " " << coe_list[i][3] << " " << coe_list[i][4] << " " << coe_list[i][5] << std::endl;
+		//fout0 << std::setprecision(14) << sats_coe0[i][0] << " " << sats_coe0[i][1] << " " << sats_coe0[i][2] << " " << sats_coe0[i][3] << " " << sats_coe0[i][4] << " " << sats_coe0[i][5] << std::endl;
+		fout0 << std::setprecision(14) << coe_list[i][0] << " " << coe_list[i][1] << " " << coe_list[i][2] << " " << coe_list[i][3] << " " << coe_list[i][4] << " " << coe_list[i][5] << std::endl;
 		if (std::find(imp_idx.begin(), imp_idx.end(), i) != imp_idx.end()) {
 			fout0 << std::setprecision(14) << t_imp[idx] << " " << dv[idx][0] << " " << dv[idx][1] << " " << dv[idx][2] << std::endl;
 			idx++;
