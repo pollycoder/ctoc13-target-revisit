@@ -19,10 +19,33 @@
 #include "J2propagation.h"
 #include "single_sat.h"
 #include <iomanip>
+#include "main.h"
 
 
 
 const std::string space = " ";
+
+void output_result(std::vector<std::tuple<std::vector<double>, std::vector<std::vector<double>>>>& sat_info_list)
+{
+	std::ofstream fout0("../output_result/result.txt");
+	for (const auto& sat : sat_info_list) {
+		// 先写入根数
+		for (const auto& coe : std::get<0>(sat)) {
+			fout0 << coe << " ";
+		}
+		fout0 << std::endl;
+
+		// 再写入脉冲
+		if (std::get<1>(sat).empty()) {
+			fout0 << std::setprecision(14) << 0.0 << " " << 0.0 << " " << 0.0 << " " << 0.0 << std::endl;
+		}
+		else {
+			for (const auto& row : std::get<1>(sat)) {
+				fout0 << std::setprecision(14) << row[0] << " " << row[1] << " " << row[2] << " " << row[3] << std::endl;
+			}
+		}
+	}
+}
 
 
 // 多棵树搜索（重启）
@@ -39,36 +62,6 @@ void multitree_search() {
 	//W=10000，扩展一层130s
 	//至少176层约22880s，预计7h到达
 	//完整扩展约300-400层，一天内必须完成
-}
-
-
-/***********************************************************************/
-// single_imp的失败算例
-// 目标：12
-// 预计观测时间：1620s
-// 问题：tG估计错误（84000s），与圈数严重不匹配时方程无解
-// 目标：13
-// 预计观测时间：1800s
-// 问题：升降交正确，但圈数不匹配（NR=3，实际1圈就能观测），且脉冲很大（dv = 0.11047 -3.51521 -2.95107）
-// 目标：14
-// 预计观测时间：8400s（过点非常精确）
-// 问题：升降交正确，但圈数不匹配（NR=3，实际2圈就能观测），且脉冲不接近0（dv = 0.00431052 -0.137163 -0.11515）
-// 从13000s第二次观测目标12开始，估算基本正确
-/***********************************************************************/
-void fail_example_singleimp() {
-	double m0 = 1000.0, mf, t0 = 0.0, tf;
-	double geo[2];
-	get_target_geogetic(11, 0.0, geo);
-	double dv[3];
-	int NR = 4, branch = 0, flag;
-	double coe_00[6] = { sats_coe0[0][0], sats_coe0[0][1], sats_coe0[0][2], sats_coe0[0][3], sats_coe0[0][4], sats_coe0[0][5] };
-	double RV0[6];
-	coe2rv(flag, RV0, coe_00, mu_km_s);
-	single_imp(m0, t0, RV0, geo[1], geo[0], 1, flag, mf, tf, dv, NR, branch);
-
-	std::cout << "flag = " << flag << std::endl;
-	std::cout << "tf = " << tf << std::endl;
-	std::cout << "dv = " << dv[0] << " " << dv[1] << " " << dv[2] << std::endl;
 }
 
 
@@ -107,121 +100,33 @@ void read_db() {
 
 }
 
-void single_sat_opt() {
-	double para[7] = { sats_coe0[1][0], sats_coe0[1][1], sats_coe0[1][2], sats_coe0[1][3], sats_coe0[1][4], sats_coe0[1][5], 86400.0 };
-	std::vector<double> X = { 0.5, 0.5, 0.5, 0.5 };
-	double f;
-
-	// DE global
-	auto beforeTime = std::chrono::steady_clock::now();
-	DE_parallel(obj_single_sat, para, X, f, X.size(), 10, 5000, 100);
-	auto afterTime = std::chrono::steady_clock::now();
-	double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
-	std::cout << "DE总耗时：" << duration_second << "秒" << std::endl;
-
-	std::vector<double> max_revisit;
-	double t_imp, dv[3];
-	get_revisit(X, para, max_revisit, t_imp, dv, f);
-
-	std::ofstream fout0("../output_result/result.txt");
-	std::cout << "t = " << t_imp << std::endl;
-	std::cout << "dv = " << dv[0] << " " << dv[1] << " " << dv[2] << std::endl;
-
-	fout0 << sats_coe0[0][0] << " " << sats_coe0[0][1] << " " << sats_coe0[0][2] << " " << sats_coe0[0][3] << " " << sats_coe0[0][4] << " " << sats_coe0[0][5] << std::endl;
-	fout0 << t_imp << " " << dv[0] << " " << dv[1] << " " << dv[2] << std::endl;
-	int index = 0;
-	for (auto iter = max_revisit.begin(); iter != max_revisit.end(); iter++) {
-		index++;
-		fout0 << "Target" << index << ": " << *iter << std::endl;
-		std::cout << *iter << std::endl;
-	}
-
-	// 种群：50
-	// 迭代次数：10000
-	// 0.025s目标函数运行一次
-	// 16核，预计3.33h完成
-}
 
 void multi_sat_opt() {
-	int para[impNum] = {4, 5, 6, 7};
+	int var_num = std::accumulate(imp_num.begin(), imp_num.end(), 0) * 4;
 	std::vector<double> X;
-	std::vector<int> imp_idx;
-	for (int i = 0; i < impNum; i++) {
-		for (int j = 0; j < 3; j++) X.push_back(0.5);
-		imp_idx.push_back(para[i]);
+	double f;
+	std::vector<std::vector<double>> AccessTable;
+	std::vector<std::tuple<std::vector<double>, std::vector<std::vector<double>>>> sat_info_list;
+
+	for (int i = 0; i < var_num; i++) {
+		X.push_back(0.5);
 	}
+	//DE_parallel(obj_func, nullptr, X, f, var_num, 40, 4000, 100);
+	//nlopt_main(obj_func, nullptr, X, f, var_num);
 
-	double f; 
-
-	std::vector<double> X0_dv = { 0.0219720091589485,
-0.365642344394979,
-0.703778433294802,
-0.727745322434612,
-0.530030217975705,
-0.180008316690934,
-0.341787214183994,
- 0.928207449096013,
-0.477177100366032,
- 0.561344019885849,
-0.323876731106216,
-0.644181304570462,
-0.271460475085976,
- 0.476403063212604,
- 0.412335356727174,
-0.341954862280587};
-
-	// DE global
-	auto beforeTime = std::chrono::steady_clock::now();
-	//DE_parallel(obj_multi_sat_certain, para, X, f, X.size(), 80, 10000, 100);
-	//nlopt_main(obj_multi_sat_certain, para, X0_dv, f, X.size(), 10000);
-	DE_parallel(obj_func_imp_coe, para, X, f, X.size(), 5 * X.size(), 10000, 100);
-	nlopt_main(obj_func_imp_coe, para, X, f, X.size(), 5 * X.size(), 10000);
-	auto afterTime = std::chrono::steady_clock::now();
-	double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
-	std::cout << "总耗时：" << duration_second << "秒" << std::endl;
-
-	std::vector<double> max_revisit;
-	std::vector<double> t_imp;
-	std::vector<std::vector<double>> dv;
-	std::vector<std::vector<double>> coe_list;
-	
-	
-
-	//get_revisit_certain(X, para, max_revisit, t_imp, dv, f);
-	
-	get_revisit_certain_coe(X, X0_dv, para, max_revisit, t_imp, dv, f, coe_list);
-	//get_revisit_certain(X0_dv, para, max_revisit, t_imp, dv, f);
+	get_score_info(X, nullptr, f, sat_info_list, AccessTable);
 
 	std::cout << "f = " << f << std::endl;
-
-
-
-	std::ofstream fout0("../output_result/result.txt");
-	int idx = 0;
-	for (int i = 0; i < TreeNum; i++) {
-		//fout0 << std::setprecision(14) << sats_coe0[i][0] << " " << sats_coe0[i][1] << " " << sats_coe0[i][2] << " " << sats_coe0[i][3] << " " << sats_coe0[i][4] << " " << sats_coe0[i][5] << std::endl;
-		fout0 << std::setprecision(14) << coe_list[i][0] << " " << coe_list[i][1] << " " << coe_list[i][2] << " " << coe_list[i][3] << " " << coe_list[i][4] << " " << coe_list[i][5] << std::endl;
-		if (std::find(imp_idx.begin(), imp_idx.end(), i) != imp_idx.end()) {
-			fout0 << std::setprecision(14) << t_imp[idx] << " " << dv[idx][0] << " " << dv[idx][1] << " " << dv[idx][2] << std::endl;
-			idx++;
-		}
-		else {
-			fout0 << std::setprecision(14) << 0.0 << " " << 0.0 << " " << 0.0 << std::endl;
-		}
+	std::vector<double> revisit_gap;
+	max_reseetime(AccessTable, revisit_gap);
+	for (const auto& t : revisit_gap) {
+		std::cout << t << std::endl;
 	}
 
-	int index = 0;
-	for (auto iter = max_revisit.begin(); iter != max_revisit.end(); iter++) {
-		index++;
-		fout0 << "Target" << index << ": " << *iter << std::endl;
-		std::cout << "Target" << index << ": " << *iter << std::endl;
-	}
-
-	// 种群：80
-	// 迭代次数：10000
-	// 0.016s目标函数运行一次
-	// 16核，预计3.6h完成
+	output_result(sat_info_list);
 }
+
+
 
 void max_revisit_verify() {
 	std::vector<std::vector<double>> rv0_list;
@@ -251,14 +156,7 @@ void max_revisit_verify() {
 }
  
 int main() {
-
-	// 核数：16核
-	// 任务：
-	//	1. 机动优化，
-	// 开始时间：17:00
-	// 验收时间：21:00第一次验收，如果继续次日7:00验收
-	//multitree_search();
-	//max_revisit_verify();
 	multi_sat_opt();
+
 	return 0;
 }

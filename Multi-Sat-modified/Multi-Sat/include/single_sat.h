@@ -2,6 +2,7 @@
 #include "Constant.h"
 #include <vector>
 #include <string>
+#include <tuple>
 
 // Height: 800km - 1000km
 // RAAN: 0 - 360 deg
@@ -31,49 +32,22 @@ void create_db_target(std::ofstream& fout0, const int& target_id);
 // 读取ship的数据库bin，筛掉观测少于阈值的数据
 bool filter_bin_file(const std::string& input_filename, const std::string& output_filename, int threshold);
 
-// 优化单颗星单次机动
-// 输入参数：
-//		f_data[0-5]：轨道根数
-//		f_data[6]：脉冲时间
-// 优化变量：
-//		t：脉冲时间，初值暂定为1天，扰动范围6小时
-//		dv[3]：脉冲3个分量，初值为0，扰动范围0.5km/s
-// 目标：
-//		t_gap_ave：平均每个目标的重访时间
-// 约束：
-//		h：轨道高度，200km-1000km
-//		dv：脉冲不大于1km/s
-double obj_single_sat(const std::vector<double>& X, std::vector<double>& grad, void* f_data);
-void get_imp_trajectory(int& flag, double* rv0, const double* coe0, double* rv_imp, double& t_imp, double* dv, double& peri, double& apo);
-void get_revisit(const std::vector<double>& X, const double* para, std::vector<double>& max_revisit, double& t_imp, double* dv, double& score);
+// 单颗星给定机动次数的观测时刻表
+void AccessTableSingleSat(const double* coe0, const std::vector<std::vector<double>>& t_dv_list, std::vector<std::vector<double>>& AccessTable, double& score);
 
-// 优化多颗星单次机动
-// 输入参数（7个一循环）：
-//		f_data[0-5]：轨道根数
-//		f_data[6]：脉冲时间
-// 优化变量（4个一循环）：
-//		t：脉冲时间，初值暂定为1天，扰动范围6小时
-//		dv[3]：脉冲3个分量，初值为0，扰动范围0.5km/s
-// 目标：
-//		t_gap_ave：平均每个目标的重访时间
-// 约束：
-//		h：轨道高度，200km-1000km
-//		dv：脉冲不大于1km/s（扰动范围注定不会发生此问题，忽略）
-double obj_multi_sat(const std::vector<double>& X, std::vector<double>& grad, void* f_data);
-void get_revisit(const std::vector<double>& X, const double* para, std::vector<double>& max_revisit, 
-				 std::vector<double>& t_imp, std::vector<std::vector<double>>& dv, double& score);
+// 多颗指定星给定机动次数的观测时刻表
+// 每个tuple：单颗卫星的初始根数，对应的脉冲时刻表
+void AccessTableMultiSat(const std::vector<std::tuple<std::vector<double>, std::vector<std::vector<double>>>>& sat_info_list, std::vector<std::vector<double>>& AccessTable, double& score);
 
 
-// 优化指定编号卫星，单次机动
-// 输入参数：
-//		f_data[0 - NumSat_Imp]:带机动的卫星编号
-// 优化变量(4个一循环)：
-//		t：脉冲时间
-//		dv[3]：脉冲3个分量
-double obj_multi_sat_certain(const std::vector<double>& X, std::vector<double>& grad, void* f_data);
-void get_revisit_certain(const std::vector<double>& X, const int* para, std::vector<double>& max_revisit, 
-				 std::vector<double>& t_imp, std::vector<std::vector<double>>& dv, double& score);
+// 目标函数
+double obj_func(const std::vector<double>& X, std::vector<double>& grad, void* f_data);
 
-void get_revisit_certain_coe(const std::vector<double>& X, const std::vector<double>& X0_dv, const int* para, std::vector<double>& max_revisit,
-	std::vector<double>& t_imp, std::vector<std::vector<double>>& dv, double& score, std::vector<std::vector<double>>& coe_result);
-double obj_func_imp_coe(const std::vector<double>& X, std::vector<double>& grad, void* f_data);
+// 获取一颗星的信息
+void get_one_sat(int& i, const std::vector<double>& X, int& imp, double& score, std::vector<std::vector<double>>& t_dv, std::vector<double>& coe0, std::vector<std::tuple<std::vector<double>, std::vector<std::vector<double>>>>& sat_info_list);
+
+// 优化函数的操作部分：获取分数和优化信息
+// X：优化变量，4个一组，每组对应一个(t, dv[3])
+void get_score_info(const std::vector<double>& X, double* f_data, double& score, 
+					std::vector<std::tuple<std::vector<double>, std::vector<std::vector<double>>>>& sat_info_list, 
+					std::vector<std::vector<double>>& AccessTable);
