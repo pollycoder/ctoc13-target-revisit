@@ -111,8 +111,8 @@ void multi_sat_opt() {
 	for (int i = 0; i < var_num; i++) {
 		X.push_back(0.5);
 	}
-	//DE_parallel(obj_func, nullptr, X, f, var_num, 40, 4000, 100);
-	//nlopt_main(obj_func, nullptr, X, f, var_num);
+	DE_parallel(obj_func, nullptr, X, f, var_num, 40, 4000, 100);
+	nlopt_main(obj_func, nullptr, X, f, var_num);
 
 	get_score_info(X, nullptr, f, sat_info_list, AccessTable);
 
