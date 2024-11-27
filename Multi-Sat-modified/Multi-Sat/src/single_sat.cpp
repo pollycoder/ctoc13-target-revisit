@@ -304,7 +304,7 @@ void get_one_sat(int& i, const std::vector<double>& X, int& imp, int& imp_idx, d
 	if (std::find(imp_sat.begin(), imp_sat.end(), i) != imp_sat.end()) {
 		double t_temp = 0.0;
 		for (int j = 0; j < imp_num[imp_idx]; j++) {
-			t_temp += X[imp * 4] * 57600.0;
+			t_temp += X[imp * 4] * 21600.0;
 			//score += (std::max(t_temp, 172800.0) - 172800.0) * (std::max(t_temp, 172800.0) - 172800.0);
 			double dv[3] = {
 				(X[imp * 4 + 1] - 0.5) * imp_max,
@@ -364,7 +364,7 @@ void get_score_info(const std::vector<double>& X, double* f_data, double& score,
 		else {
 			temp = 172800.0 - t;
 		}
-		if (temp > gap_temp && t < 57600.0) gap_temp = temp;
+		if (temp > gap_temp && t < 21600.0) gap_temp = temp;
 	}
 	gap_temp /= 3600.0;
 
