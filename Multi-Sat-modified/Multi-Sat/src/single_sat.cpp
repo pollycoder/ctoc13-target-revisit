@@ -358,9 +358,9 @@ void get_score_info(const std::vector<double>& X, double* f_data, double& score,
 		if (idx != TargetNum) {
 			score -= 6.0 / std::max(6.0, gap);
 		}
-		/*else
+		else
 			score -= 3.0 / std::max(3.0, gap);
-		*/
+		
 	}
 
 }
@@ -412,8 +412,8 @@ void get_score_info(const std::vector<double>& X, double* f_data, double& score,
 		if (idx != TargetNum) {
 			score -= 6.0 / std::max(6.0, gap);
 		}
-		else
-			score -= 3.0 / std::max(3.0, gap);
+		//else
+			//score -= 3.0 / std::max(3.0, gap);
 		
 	}
 
