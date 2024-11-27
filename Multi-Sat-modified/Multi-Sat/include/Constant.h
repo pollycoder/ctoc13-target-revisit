@@ -110,6 +110,7 @@ const double penalty = 1.0e6;
 const int TreeNum = 8;
 const int TargetNum = 21;
 
+<<<<<<< HEAD
 const int impNum = 8;
 
 // 师弟们的构型，适用于大机动优化
