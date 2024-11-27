@@ -290,9 +290,9 @@ double obj_func(const std::vector<double>& X, std::vector<double>& grad, void* f
 	std::vector<std::vector<double>> AccessTable;
 
 	get_score_info(X, para, score, sat_info_list, AccessTable);
-	// afterTime = std::chrono::steady_clock::now();
-	//double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
-	//std::cout << duration_second << std::endl;
+	/*auto afterTime = std::chrono::steady_clock::now();
+	double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
+	std::cout << duration_second << std::endl;*/
 	return score;
 }
 
@@ -304,7 +304,7 @@ void get_one_sat(int& i, const std::vector<double>& X, int& imp, int& imp_idx, d
 	if (std::find(imp_sat.begin(), imp_sat.end(), i) != imp_sat.end()) {
 		double t_temp = 0.0;
 		for (int j = 0; j < imp_num[imp_idx]; j++) {
-			//t_temp += X[imp * 4] * 172800.0;
+			t_temp += X[imp * 4] * 172800.0;
 			score += (std::max(t_temp, 172800.0) - 172800.0) * (std::max(t_temp, 172800.0) - 172800.0);
 			double dv[3] = {
 				(X[imp * 4 + 1] - 0.5) * imp_max,
@@ -320,8 +320,11 @@ void get_one_sat(int& i, const std::vector<double>& X, int& imp, int& imp_idx, d
 		for (const auto& idx : fixed_sat) {
 			if (idx == i) {
 				t_dv = fixed_imp[fixed_idx];
-				fixed_idx++;
+				
 				break;
+			}
+			else {
+				fixed_idx++;
 			}
 		}
 	}
@@ -352,10 +355,11 @@ void get_score_info(const std::vector<double>& X, double* f_data, double& score,
 	int idx = 0;
 	for (const auto& gap : max_revisit_gap) {
 		idx++;
-		if (idx != TargetNum) 
-			score -= 4.0 * 6.0 / std::max(6.0, gap);
+		if (idx != TargetNum) {
+			score -= 6.0 / std::max(6.0, gap);
+		}
 		else
-			score -= 20.0 * 3.0 / std::max(3.0, gap);
+			score -= 3.0 / std::max(3.0, gap);
 		
 	}
 

@@ -110,7 +110,7 @@ const double penalty = 1.0e6;
 const int TreeNum = 8;
 const int TargetNum = 21;
 
-<<<<<<< HEAD
+
 const int impNum = 8;
 
 // 师弟们的构型，适用于大机动优化
@@ -131,7 +131,7 @@ const double imp_max = 2.0;
 const std::vector<int> imp_sat = { 0, 1, 2, 3 };
 const std::vector<int> imp_num = { 1, 1, 1, 1 };
 const std::vector<int> fixed_sat = {  };
-const std::vector<std::vector<std::vector<double>>> fixed_imp = {  };
+const std::vector<std::vector<std::vector<double>>> fixed_imp = {	 };
 
 
 // 8颗星全机动
