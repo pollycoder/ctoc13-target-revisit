@@ -320,8 +320,10 @@ void get_one_sat(int& i, const std::vector<double>& X, int& imp, int& imp_idx, d
 		for (const auto& idx : fixed_sat) {
 			if (idx == i) {
 				t_dv = fixed_imp[fixed_idx];
-				fixed_idx++;
 				break;
+			}
+			else {
+				fixed_idx++;
 			}
 		}
 	}

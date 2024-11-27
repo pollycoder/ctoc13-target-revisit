@@ -110,7 +110,7 @@ const double penalty = 1.0e6;
 const int TreeNum = 8;
 const int TargetNum = 21;
 
-<<<<<<< HEAD
+
 const int impNum = 8;
 
 // 师弟们的构型，适用于大机动优化
@@ -128,10 +128,13 @@ const double hmin = 201.0;
 const double imp_max = 2.0;
 
 // 第一个vector是脉冲星的编号，第二个vector是脉冲的次数
-const std::vector<int> imp_sat = { 0, 1, 2, 3 };
+const std::vector<int> imp_sat = { 4, 5, 6, 7 };
 const std::vector<int> imp_num = { 1, 1, 1, 1 };
-const std::vector<int> fixed_sat = {  };
-const std::vector<std::vector<std::vector<double>>> fixed_imp = {  };
+const std::vector<int> fixed_sat = { 1, 2, 3 };
+const std::vector<std::vector<std::vector<double>>> fixed_imp = { 
+																	{{22127.099853516, 0.013983917236328, -0.017061767578125, 0.0012494659423827}},
+																	{{22160.368652344, -0.013151588439941, 0.0080436706542972, 0.0013359069824217}},
+																	{{21538.894042969, -0.00012966156005856, -0.0044507598876951, -0.00012966156005856}} };
 
 
 // 8颗星全机动
