@@ -102,7 +102,7 @@ void read_db() {
 
 
 void multi_sat_opt() {
-	int var_num = std::accumulate(imp_num.begin(), imp_num.end(), 0) * 4;
+	int var_num = 6 * TreeNum/*std::accumulate(imp_num.begin(), imp_num.end(), 0) * 4*/;
 	std::vector<double> X;
 	double f;
 	std::vector<std::vector<double>> AccessTable;
@@ -110,15 +110,19 @@ void multi_sat_opt() {
 
 
 	for (int i = 0; i < var_num; i++) {
-		if (i % 4 == 0) {
+		/*if (i % 4 == 0) {
 			X.push_back(0.0);
 		}
-		else X.push_back(0.5);
+		else X.push_back(0.5);*/
+		X.push_back(0.5);
 	}
-	//DE_parallel(obj_func, nullptr, X, f, var_num, 40, 8000, 100);
-	nlopt_main(obj_func, nullptr, X, f, var_num, 0, 10000);
+	DE_parallel(obj_func, nullptr, X, f, var_num, 40, 8000, 100);
+	nlopt_main(obj_func_coelist, nullptr, X, f, var_num, 0, 10000);
 
-	get_score_info(X, nullptr, f, sat_info_list, AccessTable);
+	//get_score_info(X, nullptr, f, sat_info_list, AccessTable);
+
+	std::vector<std::vector<double>> coe0_list;
+	get_score_info(X, nullptr, f, coe0_list, AccessTable);
 
 	
 
@@ -129,7 +133,13 @@ void multi_sat_opt() {
 		std::cout << t << std::endl;
 	}
 
-	output_result(sat_info_list);
+	std::ofstream fout0("../output_result/result.txt");
+	for (int i = 0; i < TreeNum; i++) {
+		fout0 << std::setprecision(14) << coe0_list[i][0] << space << coe0_list[i][1] << space << coe0_list[i][2] << space << coe0_list[i][3] << space << coe0_list[i][4] << space << coe0_list[i][5] << std::endl;
+	}
+
+	
+	//output_result(sat_info_list);
 	// 16核，0.025s运行一轮
 	// 预计2.13h完成
 }

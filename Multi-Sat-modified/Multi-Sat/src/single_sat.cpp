@@ -358,6 +358,60 @@ void get_score_info(const std::vector<double>& X, double* f_data, double& score,
 		if (idx != TargetNum) {
 			score -= 6.0 / std::max(6.0, gap);
 		}
+		/*else
+			score -= 3.0 / std::max(3.0, gap);
+		*/
+	}
+
+}
+
+double obj_func_coelist(const std::vector<double>& X, std::vector<double>& grad, void* f_data) {
+	//auto beforeTime = std::chrono::steady_clock::now();
+	double* para = static_cast<double*>(f_data);
+	double score;
+	std::vector<std::vector<double>> coe_list;
+	std::vector<std::vector<double>> AccessTable;
+
+	get_score_info(X, para, score, coe_list, AccessTable);
+	/*auto afterTime = std::chrono::steady_clock::now();
+	double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
+	std::cout << duration_second << std::endl;*/
+	return score;
+}
+
+void get_score_info(const std::vector<double>& X, double* f_data, double& score,
+	std::vector<std::vector<double>>& coe_list,
+	std::vector<std::vector<double>>& AccessTable) {
+	score = 0.0;
+	std::vector<std::vector<double>> rv0_list;
+	coe_list.resize(TreeNum);
+	
+	for (int i = 0; i < TreeNum; i++) {
+		coe_list[i].resize(6);
+		coe_list[i][0] = sats_coe0[i][0] + (X[6 * i] - 0.5) * 400.0;		// sma：扰动200km
+		coe_list[i][1] = sats_coe0[i][1] + (X[6 * i + 1] - 0.5) * 0.02;		// ecc：扰动0.01
+		coe_list[i][2] = sats_coe0[i][2] + (X[6 * i + 2] - 0.5) * 20.0 * D2R;//inc：扰动10°
+		coe_list[i][3] = sats_coe0[i][3] + (X[6 * i + 3] - 0.5) * DPI;//raan：扰动90°
+		coe_list[i][4] = sats_coe0[i][4] + (X[6 * i + 4] - 0.5) * 2.0 * D2PI;//raan：扰动360°
+		coe_list[i][5] = sats_coe0[i][5] + (X[6 * i + 5] - 0.5) * 2.0 * D2PI;//raan：扰动360°
+		double coe0[6] = { coe_list[i][0], coe_list[i][1], coe_list[i][2], coe_list[i][3], coe_list[i][4], coe_list[i][5] };
+		int flag;
+		double rv0[6];
+		coe2rv(flag, rv0, coe0, mu_km_s);
+		std::vector<double> rv0_vec = { rv0[0], rv0[1], rv0[2], rv0[3], rv0[4], rv0[5] };
+		rv0_list.push_back(rv0_vec);
+	}
+	//AccessTableMultiSat(sat_info_list, AccessTable, score);
+	MultiSat_AccessPointObjects(rv0_list, 0.0, 172800.0, 60.0, TargetNum, AccessTable);
+
+	std::vector<double> max_revisit_gap;
+	max_reseetime(AccessTable, max_revisit_gap);
+	int idx = 0;
+	for (const auto& gap : max_revisit_gap) {
+		idx++;
+		if (idx != TargetNum) {
+			score -= 6.0 / std::max(6.0, gap);
+		}
 		else
 			score -= 3.0 / std::max(3.0, gap);
 		
