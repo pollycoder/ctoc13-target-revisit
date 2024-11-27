@@ -43,11 +43,14 @@ void AccessTableMultiSat(const std::vector<std::tuple<std::vector<double>, std::
 // 目标函数
 double obj_func(const std::vector<double>& X, std::vector<double>& grad, void* f_data);
 
-// 获取一颗星的信息
-void get_one_sat(int& i, const std::vector<double>& X, int& imp, double& score, std::vector<std::vector<double>>& t_dv, std::vector<double>& coe0, std::vector<std::tuple<std::vector<double>, std::vector<std::vector<double>>>>& sat_info_list);
 
 // 优化函数的操作部分：获取分数和优化信息
 // X：优化变量，4个一组，每组对应一个(t, dv[3])
 void get_score_info(const std::vector<double>& X, double* f_data, double& score, 
 					std::vector<std::tuple<std::vector<double>, std::vector<std::vector<double>>>>& sat_info_list, 
 					std::vector<std::vector<double>>& AccessTable);
+
+
+double obj_func_coelist(const std::vector<double>& X, std::vector<double>& grad, void* f_data);
+void get_score_info(const std::vector<double>& X, double* f_data, double& score,
+	std::vector<std::vector<double>>& coe_list, std::vector<std::vector<double>>& AccessTable);

@@ -290,9 +290,9 @@ double obj_func(const std::vector<double>& X, std::vector<double>& grad, void* f
 	std::vector<std::vector<double>> AccessTable;
 
 	get_score_info(X, para, score, sat_info_list, AccessTable);
-	// afterTime = std::chrono::steady_clock::now();
-	//double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
-	//std::cout << duration_second << std::endl;
+	/*auto afterTime = std::chrono::steady_clock::now();
+	double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
+	std::cout << duration_second << std::endl;*/
 	return score;
 }
 
@@ -304,8 +304,8 @@ void get_one_sat(int& i, const std::vector<double>& X, int& imp, int& imp_idx, d
 	if (std::find(imp_sat.begin(), imp_sat.end(), i) != imp_sat.end()) {
 		double t_temp = 0.0;
 		for (int j = 0; j < imp_num[imp_idx]; j++) {
-			t_temp += X[imp * 4] * 172800.0;
-			score += (std::max(t_temp, 172800.0) - 172800.0) * (std::max(t_temp, 172800.0) - 172800.0);
+			t_temp += X[imp * 4] * 57600.0;
+			//score += (std::max(t_temp, 172800.0) - 172800.0) * (std::max(t_temp, 172800.0) - 172800.0);
 			double dv[3] = {
 				(X[imp * 4 + 1] - 0.5) * imp_max,
 				(X[imp * 4 + 2] - 0.5) * imp_max,
@@ -320,6 +320,7 @@ void get_one_sat(int& i, const std::vector<double>& X, int& imp, int& imp_idx, d
 		for (const auto& idx : fixed_sat) {
 			if (idx == i) {
 				t_dv = fixed_imp[fixed_idx];
+				
 				break;
 			}
 			else {
@@ -351,13 +352,118 @@ void get_score_info(const std::vector<double>& X, double* f_data, double& score,
 	
 	std::vector<double> max_revisit_gap;
 	max_reseetime(AccessTable, max_revisit_gap);
+
+	double gap_temp = AccessTable.back().front();
+	int id = 0;
+	for (const auto& t : AccessTable.back()) {
+		id++;
+		double temp;
+		if (id < AccessTable.back().size()) {
+			temp = AccessTable.back()[id] - t;
+		}
+		else {
+			temp = 172800.0 - t;
+		}
+		if (temp > gap_temp && t < 57600.0) gap_temp = temp;
+	}
+	gap_temp /= 3600.0;
+
 	int idx = 0;
 	for (const auto& gap : max_revisit_gap) {
 		idx++;
-		if (idx != TargetNum) 
-			score -= 4.0 * 6.0 / std::max(6.0, gap);
-		else
-			score -= 20.0 * 3.0 / std::max(3.0, gap);
+		if (idx != TargetNum) {
+			score += (std::max(gap, 6.0) - 6.0) * 100.0;
+		}
+		else {
+			score += gap_temp;
+		}
+
+	}
+
+}
+
+double obj_func_coelist(const std::vector<double>& X, std::vector<double>& grad, void* f_data) {
+	//auto beforeTime = std::chrono::steady_clock::now();
+	double* para = static_cast<double*>(f_data);
+	double score;
+	std::vector<std::vector<double>> coe_list;
+	std::vector<std::vector<double>> AccessTable;
+
+	get_score_info(X, para, score, coe_list, AccessTable);
+	/*auto afterTime = std::chrono::steady_clock::now();
+	double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
+	std::cout << duration_second << std::endl;*/
+	return score;
+}
+
+void get_score_info(const std::vector<double>& X, double* f_data, double& score,
+	std::vector<std::vector<double>>& coe_list,
+	std::vector<std::vector<double>>& AccessTable) {
+	score = 0.0;
+	std::vector<std::vector<double>> rv0_list;
+	coe_list.resize(TreeNum);
+	
+	for (int i = 0; i < TreeNum; i++) {
+		coe_list[i].resize(6);
+		if (i < 4) {//高纬度暂时不管
+			coe_list[i][0] = sats_coe0[i][0];		// sma：扰动200km
+			coe_list[i][1] = sats_coe0[i][1];		// ecc：扰动0.01
+			coe_list[i][2] = sats_coe0[i][2];//inc：扰动10°
+			coe_list[i][3] = sats_coe0[i][3];//raan：扰动90°
+			coe_list[i][4] = sats_coe0[i][4];//raan：扰动360°
+			coe_list[i][5] = sats_coe0[i][5];//raan：扰动360°
+		}
+		else {
+			coe_list[i][0] = sats_coe0[i][0];		// sma：扰动50km
+			coe_list[i][1] = sats_coe0[i][1];		// ecc：扰动0.01
+			coe_list[i][2] = sats_coe0[i][2] + (X[4 * (i-4)] - 0.5) * 20.0 * D2R;//inc：扰动10°
+			coe_list[i][3] = sats_coe0[i][3] + (X[4 * (i-4) + 1] - 0.5) * DPI;//raan：扰动90°
+			coe_list[i][4] = sats_coe0[i][4] + (X[4 * (i-4) + 2] - 0.5) * 2.0 * D2PI;//raan：扰动360°
+			coe_list[i][5] = sats_coe0[i][5] + (X[4 * (i-4) + 3] - 0.5) * 2.0 * D2PI;//raan：扰动360°
+			double apo = coe_list[i][0] * (1 + coe_list[i][1]) - Re_km;
+			double peri = coe_list[i][0] * (1 - coe_list[i][1]) - Re_km;
+			if (coe_list[i][1] <= 0.0 || coe_list[i][1] >= 1.0) { score += penalty; }
+			score += (std::max(apo, hmax) - hmax) * (std::max(apo, hmax) - hmax);
+			score += (std::min(peri, hmin) - hmin) * (std::min(peri, hmin) - hmin);
+		}
+		double coe0[6] = { coe_list[i][0], coe_list[i][1], coe_list[i][2], coe_list[i][3], coe_list[i][4], coe_list[i][5] };
+		int flag;
+		double rv0[6];
+		coe2rv(flag, rv0, coe0, mu_km_s);
+		std::vector<double> rv0_vec = { rv0[0], rv0[1], rv0[2], rv0[3], rv0[4], rv0[5] };
+		rv0_list.push_back(rv0_vec);
+	}
+	//AccessTableMultiSat(sat_info_list, AccessTable, score);
+	MultiSat_AccessPointObjects(rv0_list, 0.0, 172800.0, 60.0, TargetNum, AccessTable);
+
+	std::vector<double> max_revisit_gap;
+	max_reseetime(AccessTable, max_revisit_gap);
+	double gap_temp = AccessTable.back().front();
+	int id = 0;
+	for (const auto& t : AccessTable.back()) {
+		id++;
+		double temp;
+		if (id < AccessTable.back().size()) {
+			temp = AccessTable.back()[id] - t;
+		}
+		else {
+			temp = 172800.0 - t;
+		}
+		if (temp > gap_temp && t < 21600.0) gap_temp = temp;
+	}
+	gap_temp /= 3600.0;
+	
+
+	int idx = 0;
+	for (const auto& gap : max_revisit_gap) {
+		idx++;
+		if (idx != TargetNum) {
+			//score -= (6.0 / std::max(6.0, gap)) * (6.0 / std::max(6.0, gap));
+			score += (std::max(gap, 6.0) - 6.0) * 100.0;
+		}
+		else {
+			score += gap_temp;
+		}
 		
 	}
 

@@ -50,7 +50,7 @@ void output_result(std::vector<std::tuple<std::vector<double>, std::vector<std::
 
 // 多棵树搜索（重启）
 void multitree_search() {
-	MultiTree multi_tree(10000, 4, 100, dv_max);
+	MultiTree multi_tree(1000, 4, 100, dv_max);
 
 	auto beforeTime = std::chrono::steady_clock::now();
 	multi_tree.Run();
@@ -110,17 +110,16 @@ void multi_sat_opt() {
 
 
 	for (int i = 0; i < var_num; i++) {
-		if (i % 4 == 0) {
+		/*if (i % 4 == 0) {
 			X.push_back(0.0);
 		}
-		else X.push_back(0.5);
+		else X.push_back(0.5);*/
+		X.push_back(0.5);
 	}
-	//DE_parallel(obj_func, nullptr, X, f, var_num, 40, 2000, 100);
+	DE_parallel(obj_func, nullptr, X, f, var_num, 80, 1000, 100);
 	nlopt_main(obj_func, nullptr, X, f, var_num, 0, 10000);
 
 	get_score_info(X, nullptr, f, sat_info_list, AccessTable);
-
-	
 
 	std::cout << "f = " << f << std::endl;
 	std::vector<double> revisit_gap;
@@ -129,7 +128,10 @@ void multi_sat_opt() {
 		std::cout << t << std::endl;
 	}
 
+	
 	output_result(sat_info_list);
+	// 16核，0.025s运行一轮
+	// 预计2.13h完成
 }
 
 
@@ -163,6 +165,7 @@ void max_revisit_verify() {
  
 int main() {
 	multi_sat_opt();
+	//multitree_search();
 	
 	return 0;
 }
