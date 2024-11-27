@@ -666,7 +666,7 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 				}
 			}
 			if (am < Re_km + 200.0) {
-				flag = 0;
+				flag0 = 0;
 				return;
 			}
 
@@ -674,9 +674,18 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 			em = e0 + k2 * (am / a0 - 1.0);
 			omegam = omega0 + k1 * (am / a0 - 1.0);
 			M0m = M00 - k3 * (am / a0 - 1.0);
-			//if (em < 0.0 || em > 1.0)continue;
-			//if (am * (1.0 - em) < Re_km + 200.0)continue;
-			//if (am * (1.0 + em) > Re_km + 1000.0)continue;
+			if (em < 0.0 || em > 1.0) {
+				flag0 = 0;
+				return;
+			}
+			if (am * (1.0 - em) < Re_km + 200.0) {
+				flag0 = 0;
+				return;
+			}
+			if (am * (1.0 + em) > Re_km + 1000.0) {
+				flag0 = 0;
+				return;
+			}
 
 			//平根转化为瞬根，由于平瞬根转换程序中使用的Re为m，在这里也临时改成m来计算
 			mcoe[0] = am * 1000.0;
@@ -692,7 +701,7 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 			dv_mod = sqrt(mu_km_s * (2.0 * (1.0 + e0 * cos(f00)) / p0 - 1.0 / (ocoe[0] / 1000.0))) - sqrt(mu_km_s / p0 * (1.0 + e0 * e0 + 2.0 * e0 * cos(f00)));
 
 			if ((double)sign * dv_mod < 0.0) {
-				flag = 0;
+				flag0 = 0;
 				return;//新增脉冲方向的选择
 			}
 
@@ -832,8 +841,8 @@ double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad
 	double peri = a * (1 - e) - Re_km;
 	double apo = a * (1 + e) - Re_km;
 	//if(peri < 200.0 || apo > 1000.0) {
-	impulse += fabs(std::min(peri, 201.0) - 201.0);
-	impulse += fabs(std::max(apo, 999.0) - 999.0);
+	impulse += fabs(std::min(peri, 200.0) - 200.0);
+	impulse += fabs(std::max(apo, 1000.0) - 1000.0);
 		//return impulse;
 	//}
 
@@ -894,7 +903,7 @@ void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& 
 		double r = V_Norm2(R0, 3);
 		double gamma = 20.0 * D2R;
 		double beta = asin(r * sin(gamma) / Re_km) - gamma;
-		int mesh_size = 20, flag_temp = 0;
+		int mesh_size = 50, flag_temp = 0;
 		double dv_norm = 1.0e10;
 		double dv_temp[3], tf_temp = 0.0, lambda_temp, phi_temp;
 		for (int i = 0; i < mesh_size; i++) {
