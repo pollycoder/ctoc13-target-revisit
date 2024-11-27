@@ -468,7 +468,7 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 			memcpy(rv0, node->problem_.node_info_.back().rv_acc_, 6 * sizeof(double));
 			const int id = j;
 			std::vector<double> time_list;
-			AccessPointCertainObjects(rv0, t0, 172800.0, 60.0, id, time_list);
+			AccessPointCertainObjects(rv0, t0, 21600.0, 60.0, id, time_list);
 			
 			if (time_list.empty()) {
 				continue;

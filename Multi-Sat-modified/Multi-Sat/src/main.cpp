@@ -103,18 +103,35 @@ void read_db() {
 
 void multi_sat_opt() {
 	int var_num = std::accumulate(imp_num.begin(), imp_num.end(), 0) * 4;
-	std::vector<double> X;
+	std::vector<double> X/* = { 0.239121449414384
+		,0.530206588536863
+		,0.475095995260847
+		,0.461358394918194
+		,0.0481390749484353
+		,0.41998754584131
+		,0.433498285107975
+		, 0.67919236493337
+		,0.392792870716088
+		,0.601246307661597
+		,0.508935042928288
+		,0.417941153860941 }*/;
 	double f;
 	std::vector<std::vector<double>> AccessTable;
 	std::vector<std::tuple<std::vector<double>, std::vector<std::vector<double>>>> sat_info_list;
 
+
 	for (int i = 0; i < var_num; i++) {
-		X.push_back(0.5);
+		if (i % 4 == 0) {
+			X.push_back(0.0);
+		}
+		else X.push_back(0.5);
 	}
-	DE_parallel(obj_func, nullptr, X, f, var_num, 40, 4000, 100);
-	nlopt_main(obj_func, nullptr, X, f, var_num);
+	DE_parallel(obj_func, nullptr, X, f, var_num, 40, 2000, 100);
+	nlopt_main(obj_func, nullptr, X, f, var_num, 0, 10000);
 
 	get_score_info(X, nullptr, f, sat_info_list, AccessTable);
+
+	
 
 	std::cout << "f = " << f << std::endl;
 	std::vector<double> revisit_gap;
@@ -157,6 +174,6 @@ void max_revisit_verify() {
  
 int main() {
 	multi_sat_opt();
-
+	
 	return 0;
 }

@@ -223,16 +223,19 @@ void AccessTableSingleSat(const double* coe0, const std::vector<std::vector<doub
 	coe2rv(flag, rv0, coe0, mu_km_s);						
 	memcpy(rv0_temp, rv0, 6 * sizeof(double));
 	if (t_dv_list.empty()) {
-		AccessPointObjects(rv0, 0.0, 172800.0, 60.0, TargetNum, AccessTable, 20.5 * D2R);
+		AccessPointObjects(rv0, 0.0, 172800.0, 60.0, TargetNum, AccessTable, 20.0 * D2R);
 		return;
 	}
 
 	double t0 = 0, tf = t_dv_list[0][0];
+	//std::cout << coe0[0] << " " << coe0[1] << " " << coe0[2] << " " << coe0[3] << " " << coe0[4] << " " << coe0[5] << std::endl;
 
 	// 求解流程：rv0 -> time table -> rvf -> dv
 	for (int i = 0; i < t_dv_list.size() + 1; i++) {
 		timetable_temp.clear();
-		AccessPointObjects(rv0_temp, t0, tf, 60.0, 21, timetable_temp, 20.5 * D2R);
+		AccessPointObjects(rv0_temp, t0, tf, 60.0, 21, timetable_temp, 20.0 * D2R);
+		/*for(const auto& t:timetable_temp[0]) std::cout << t << " ";
+		std::cout << std::endl;*/
 		for (int j = 0; j < TargetNum; j++) {
 			AccessTable[j].insert(AccessTable[j].end(), timetable_temp[j].begin(), timetable_temp[j].end());
 		}
@@ -296,11 +299,12 @@ double obj_func(const std::vector<double>& X, std::vector<double>& grad, void* f
 
 void get_one_sat(int& i, const std::vector<double>& X, int& imp, int& imp_idx, double& score, std::vector<std::vector<double>>& t_dv, std::vector<double>& coe0, std::vector<std::tuple<std::vector<double>, std::vector<std::vector<double>>>>& sat_info_list)
 {
+	int fixed_idx = 0;
 	// 如果是脉冲星,按照次数加入脉冲信息，不是则信息表为空
 	if (std::find(imp_sat.begin(), imp_sat.end(), i) != imp_sat.end()) {
 		double t_temp = 0.0;
 		for (int j = 0; j < imp_num[imp_idx]; j++) {
-			t_temp += X[imp * 4] * 172800.0;
+			//t_temp += X[imp * 4] * 172800.0;
 			score += (std::max(t_temp, 172800.0) - 172800.0) * (std::max(t_temp, 172800.0) - 172800.0);
 			double dv[3] = {
 				(X[imp * 4 + 1] - 0.5) * imp_max,
@@ -312,7 +316,15 @@ void get_one_sat(int& i, const std::vector<double>& X, int& imp, int& imp_idx, d
 			imp++;
 		}
 		imp_idx++;
-	} 
+	} else {
+		for (const auto& idx : fixed_sat) {
+			if (idx == i) {
+				t_dv = fixed_imp[fixed_idx];
+				fixed_idx++;
+				break;
+			}
+		}
+	}
 
 	std::tuple<std::vector<double>, std::vector<std::vector<double>>> sat = std::make_tuple(coe0, t_dv);
 	sat_info_list.push_back(sat);
