@@ -128,8 +128,8 @@ const double hmin = 201.0;
 const double imp_max = 1.0;
 
 // 第一个vector是脉冲星的编号，第二个vector是脉冲的次数
-const std::vector<int> imp_sat = { 6 };
-const std::vector<int> imp_num = { 1 };
+const std::vector<int> imp_sat = { 4, 6 };
+const std::vector<int> imp_num = { 1, 1 };
 const std::vector<int> fixed_sat = {  };
 const std::vector<std::vector<std::vector<double>>> fixed_imp = {	 };
 
