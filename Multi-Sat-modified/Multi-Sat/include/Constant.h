@@ -123,13 +123,13 @@ const int impNum = 8;
 //									   {7198.4768400258,	0.0014840234629908,		0.4703802816289,	0.65679793713166,	3.4389460931268,		6.243803250014},
 //									   {7198.6102902429,	0.0013393697385596,		0.46633573556104,	2.0601573626327,	6.0072708040768,		0.15514742400321} };
 
-const double hmax = 1000.0;
-const double hmin = 200.0;
-const double imp_max = 2.0;
+const double hmax = 999.0;
+const double hmin = 201.0;
+const double imp_max = 1.0;
 
 // 第一个vector是脉冲星的编号，第二个vector是脉冲的次数
-const std::vector<int> imp_sat = { 4, 5, 6, 7 };
-const std::vector<int> imp_num = { 1, 1, 1, 1 };
+const std::vector<int> imp_sat = { 6 };
+const std::vector<int> imp_num = { 1 };
 const std::vector<int> fixed_sat = {  };
 const std::vector<std::vector<std::vector<double>>> fixed_imp = {	 };
 

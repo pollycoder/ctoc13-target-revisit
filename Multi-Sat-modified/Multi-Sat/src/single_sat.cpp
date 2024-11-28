@@ -304,7 +304,7 @@ void get_one_sat(int& i, const std::vector<double>& X, int& imp, int& imp_idx, d
 	if (std::find(imp_sat.begin(), imp_sat.end(), i) != imp_sat.end()) {
 		double t_temp = 0.0;
 		for (int j = 0; j < imp_num[imp_idx]; j++) {
-			t_temp += X[imp * 4] * 21600.0;
+			t_temp += X[imp * 4] * 36000.0;
 			//score += (std::max(t_temp, 172800.0) - 172800.0) * (std::max(t_temp, 172800.0) - 172800.0);
 			double dv[3] = {
 				(X[imp * 4 + 1] - 0.5) * imp_max,
@@ -364,7 +364,7 @@ void get_score_info(const std::vector<double>& X, double* f_data, double& score,
 		else {
 			temp = 172800.0 - t;
 		}
-		if (temp > gap_temp && t < 21600.0) gap_temp = temp;
+		if (temp > gap_temp && t < 36000.0) gap_temp = temp;
 	}
 	gap_temp /= 3600.0;
 
@@ -405,7 +405,7 @@ void get_score_info(const std::vector<double>& X, double* f_data, double& score,
 	
 	for (int i = 0; i < TreeNum; i++) {
 		coe_list[i].resize(6);
-		if (i < 4) {//高纬度暂时不管
+		if (i > 10) {//高纬度暂时不管
 			coe_list[i][0] = sats_coe0[i][0];		// sma：扰动200km
 			coe_list[i][1] = sats_coe0[i][1];		// ecc：扰动0.01
 			coe_list[i][2] = sats_coe0[i][2];//inc：扰动10°
@@ -416,10 +416,10 @@ void get_score_info(const std::vector<double>& X, double* f_data, double& score,
 		else {
 			coe_list[i][0] = sats_coe0[i][0];		// sma：扰动50km
 			coe_list[i][1] = sats_coe0[i][1];		// ecc：扰动0.01
-			coe_list[i][2] = sats_coe0[i][2] + (X[4 * (i-4)] - 0.5) * 20.0 * D2R;//inc：扰动10°
-			coe_list[i][3] = sats_coe0[i][3] + (X[4 * (i-4) + 1] - 0.5) * DPI;//raan：扰动90°
-			coe_list[i][4] = sats_coe0[i][4] + (X[4 * (i-4) + 2] - 0.5) * 2.0 * D2PI;//raan：扰动360°
-			coe_list[i][5] = sats_coe0[i][5] + (X[4 * (i-4) + 3] - 0.5) * 2.0 * D2PI;//raan：扰动360°
+			coe_list[i][2] = sats_coe0[i][2] + (X[4 * i] - 0.5) * 20.0 * D2R;//inc：扰动10°
+			coe_list[i][3] = sats_coe0[i][3] + (X[4 * i + 1] - 0.5) * DPI;//raan：扰动90°
+			coe_list[i][4] = sats_coe0[i][4] + (X[4 * i + 2] - 0.5) * 2.0 * D2PI;//raan：扰动360°
+			coe_list[i][5] = sats_coe0[i][5] + (X[4 * i + 3] - 0.5) * 2.0 * D2PI;//raan：扰动360°
 			double apo = coe_list[i][0] * (1 + coe_list[i][1]) - Re_km;
 			double peri = coe_list[i][0] * (1 - coe_list[i][1]) - Re_km;
 			if (coe_list[i][1] <= 0.0 || coe_list[i][1] >= 1.0) { score += penalty; }
@@ -449,7 +449,7 @@ void get_score_info(const std::vector<double>& X, double* f_data, double& score,
 		else {
 			temp = 172800.0 - t;
 		}
-		if (temp > gap_temp && t < 21600.0) gap_temp = temp;
+		if (temp > gap_temp && t < 39600.0) gap_temp = temp;
 	}
 	gap_temp /= 3600.0;
 	
