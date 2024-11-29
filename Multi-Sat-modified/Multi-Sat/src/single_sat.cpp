@@ -301,11 +301,17 @@ void get_one_sat(int& i, const std::vector<double>& X, int& imp, int& imp_idx, d
 {
 	int fixed_idx = 0;
 	// 如果是脉冲星,按照次数加入脉冲信息，不是则信息表为空
+	// 先把已经加入的脉冲信息加入
+	for(const auto& list:fixed_imp[i]){
+		t_dv.push_back(list);
+	}
+
 	if (std::find(imp_sat.begin(), imp_sat.end(), i) != imp_sat.end()) {
-		double t_temp = 0.0;
 		for (int j = 0; j < imp_num[imp_idx]; j++) {
-			t_temp += X[imp * 4] * 39600.0;
-			//score += (std::max(t_temp, 172800.0) - 172800.0) * (std::max(t_temp, 172800.0) - 172800.0);
+			double t_temp;
+			if (t_dv.empty()) t_temp = 0.0;
+			else t_temp = t_dv.back().front();
+			t_temp += X[imp * 4] * (115200.0 - t_temp);
 			double dv[3] = {
 				(X[imp * 4 + 1] - 0.5) * imp_max,
 				(X[imp * 4 + 2] - 0.5) * imp_max,
@@ -316,17 +322,6 @@ void get_one_sat(int& i, const std::vector<double>& X, int& imp, int& imp_idx, d
 			imp++;
 		}
 		imp_idx++;
-	} else {
-		for (const auto& idx : fixed_sat) {
-			if (idx == i) {
-				t_dv = fixed_imp[fixed_idx];
-				
-				break;
-			}
-			else {
-				fixed_idx++;
-			}
-		}
 	}
 
 	std::tuple<std::vector<double>, std::vector<std::vector<double>>> sat = std::make_tuple(coe0, t_dv);
@@ -337,6 +332,18 @@ void get_score_info(const std::vector<double>& X, double* f_data, double& score,
 	std::vector<std::tuple<std::vector<double>, std::vector<std::vector<double>>>>& sat_info_list,
 	std::vector<std::vector<double>>& AccessTable) {
 	score = 0.0;
+
+	double sum = 0.0;
+	for (const auto& it : sat_info_list) {
+		double total_dv = 0.0;
+		std::vector<std::vector<double>> t_dv = std::get<1>(it);
+		for (const auto& imp : t_dv) {
+			double im[3] = { imp[1], imp[2], imp[3] };
+			total_dv += V_Norm2(im, 3);
+		}
+		if (total_dv > 0.999) score += (total_dv - 0.999) * 100.0;
+		sum += total_dv;
+	}
 
 	int imp = 0;											// 记录已加脉冲的次数
 	int imp_idx = 0;										// 记录已加脉冲星的个数
@@ -364,7 +371,7 @@ void get_score_info(const std::vector<double>& X, double* f_data, double& score,
 		else {
 			temp = 172800.0 - t;
 		}
-		if (temp > gap_temp && t < 39600.0) gap_temp = temp;
+		if (temp > gap_temp && t < 115200.0) gap_temp = temp;
 	}
 	gap_temp /= 3600.0;
 
@@ -374,13 +381,15 @@ void get_score_info(const std::vector<double>& X, double* f_data, double& score,
 		if (idx != TargetNum) {
 			score += (std::max(gap, 6.0) - 6.0) * 100.0;
 		}
-		else
+		else {
 			score += gap_temp;
+		}
 		
 	}
 
-	
-
+	if (score <= 3.0) {
+		score = sum;
+	}
 }
 
 double obj_func_coelist(const std::vector<double>& X, std::vector<double>& grad, void* f_data) {
