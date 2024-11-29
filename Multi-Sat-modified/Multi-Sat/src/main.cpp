@@ -102,7 +102,7 @@ void read_db() {
 
 
 void multi_sat_opt() {
-	int var_num = 3 * 4;//std::accumulate(imp_num.begin(), imp_num.end(), 0) * 4;
+	int var_num = std::accumulate(imp_num.begin(), imp_num.end(), 0) * 4;
 	std::vector<double> X;
 	double f;
 	std::vector<std::vector<double>> AccessTable;
@@ -110,18 +110,18 @@ void multi_sat_opt() {
 
 
 	for (int i = 0; i < var_num; i++) {
-		/*if (i % 4 == 0) {
+		if (i % 4 == 0) {
 			X.push_back(0.0);
 		}
-		else X.push_back(0.5);*/
-		X.push_back(0.5);
+		else X.push_back(0.5);
+		//X.push_back(0.5);
 	}
-	DE_parallel(obj_func_coelist, nullptr, X, f, var_num, 40, 2000, 100);
-	nlopt_main(obj_func_coelist, nullptr, X, f, var_num, 0, 10000);
+	DE_parallel(obj_func, nullptr, X, f, var_num, 80, 4000, 100);
+	nlopt_main(obj_func, nullptr, X, f, var_num, 0, 10000);
 
-	//get_score_info(X, nullptr, f, sat_info_list, AccessTable);
-	std::vector<std::vector<double>> coelist;
-	get_score_info(X, nullptr, f, coelist, AccessTable);
+	get_score_info(X, nullptr, f, sat_info_list, AccessTable);
+	/*std::vector<std::vector<double>> coelist;
+	get_score_info(X, nullptr, f, coelist, AccessTable);*/
 
 	std::cout << "f = " << f << std::endl;
 	std::vector<double> revisit_gap;
@@ -130,18 +130,18 @@ void multi_sat_opt() {
 		std::cout << t << std::endl;
 	}
 
-	std::ofstream fout0("../output_result/result.txt");
+	/*std::ofstream fout0("../output_result/result.txt");
 	for (const auto& coe : coelist) {
 		for (const auto& oe : coe) {
 			fout0 << std::setprecision(14) << oe << space;
 		}
 		fout0 << std::endl;
 	}
+	*/
 	
-	
-	//output_result(sat_info_list);
+	output_result(sat_info_list);
 	// 16核，0.025s运行一轮
-	// 预计1h完成
+	// 预计4h完成
 }
 
 
