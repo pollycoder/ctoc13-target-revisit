@@ -116,7 +116,7 @@ void multi_sat_opt() {
 		else X.push_back(0.5);
 		//X.push_back(0.5);
 	}
-	DE_parallel(obj_func, nullptr, X, f, var_num, 80, 4000, 100);
+	DE_parallel(obj_func, nullptr, X, f, var_num, 80, 3000, 100);
 	nlopt_main(obj_func, nullptr, X, f, var_num, 0, 10000);
 
 	get_score_info(X, nullptr, f, sat_info_list, AccessTable);
@@ -136,8 +136,8 @@ void multi_sat_opt() {
 			fout0 << std::setprecision(14) << oe << space;
 		}
 		fout0 << std::endl;
-	}
-	*/
+	}*/
+	
 	
 	output_result(sat_info_list);
 	// 16ºË£¬0.025sÔËÐÐÒ»ÂÖ
