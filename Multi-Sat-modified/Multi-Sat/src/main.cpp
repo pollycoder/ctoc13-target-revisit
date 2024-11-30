@@ -111,13 +111,13 @@ void multi_sat_opt() {
 
 	for (int i = 0; i < var_num; i++) {
 		if (i % 4 == 0) {
-			X.push_back(0.0);
+			X.push_back(0.5);
 		}
 		else X.push_back(0.5);
 		//X.push_back(0.5);
 	}
-	DE_parallel(obj_func, nullptr, X, f, var_num, 80, 4000, 100);
-	nlopt_main(obj_func, nullptr, X, f, var_num, 0, 10000);
+	//DE_parallel(obj_func, nullptr, X, f, var_num, 80, 3000, 100);
+	//nlopt_main(obj_func, nullptr, X, f, var_num, 0, 10000);
 
 	get_score_info(X, nullptr, f, sat_info_list, AccessTable);
 	/*std::vector<std::vector<double>> coelist;
@@ -174,8 +174,14 @@ void max_revisit_verify() {
 }
  
 int main() {
-	multi_sat_opt();
+	//multi_sat_opt();
 	//multitree_search();
+	double coe0[6] = { 7194.816586065, 0.025478, 28.362595 * D2R, 115.090457 * D2R, 197.666127 * D2R, 351.307786 * D2R };
+	double rv[6]; int flag;
+	coe2rv(flag, rv, coe0, mu_km_s);
+	propagate_j2(rv, rv, 7490.992674, 0.0);
+	rv2coe(flag, coe0, rv, mu_km_s);
+	std::cout << std::setprecision(14) << coe0[0] << " " << coe0[1] << " " << coe0[2] << " " << coe0[3] << " " << coe0[4] << " " << coe0[5] << std::endl;
 	
 	return 0;
 }

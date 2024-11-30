@@ -311,7 +311,7 @@ void get_one_sat(int& i, const std::vector<double>& X, int& imp, int& imp_idx, d
 			double t_temp;
 			if (t_dv.empty()) t_temp = 0.0;
 			else t_temp = t_dv.back().front();
-			t_temp += X[imp * 4] * (115200.0 - t_temp);
+			t_temp += X[imp * 4] * (172800.0 - t_temp);
 			double dv[3] = {
 				(X[imp * 4 + 1] - 0.5) * imp_max,
 				(X[imp * 4 + 2] - 0.5) * imp_max,
@@ -333,6 +333,16 @@ void get_score_info(const std::vector<double>& X, double* f_data, double& score,
 	std::vector<std::vector<double>>& AccessTable) {
 	score = 0.0;
 
+	int imp = 0;											// 记录已加脉冲的次数
+	int imp_idx = 0;										// 记录已加脉冲星的个数
+	for (int i = 0; i < TreeNum; i++) {
+		std::vector<double> coe0;
+		for (int j = 0; j < 6; j++) coe0.push_back(sats_coe0[i][j]);
+		std::vector<std::vector<double>> t_dv;
+
+		get_one_sat(i, X, imp, imp_idx, score, t_dv, coe0, sat_info_list);
+	}
+
 	double sum = 0.0;
 	for (const auto& it : sat_info_list) {
 		double total_dv = 0.0;
@@ -343,16 +353,6 @@ void get_score_info(const std::vector<double>& X, double* f_data, double& score,
 		}
 		if (total_dv > 0.999) score += (total_dv - 0.999) * 100.0;
 		sum += total_dv;
-	}
-
-	int imp = 0;											// 记录已加脉冲的次数
-	int imp_idx = 0;										// 记录已加脉冲星的个数
-	for (int i = 0; i < TreeNum; i++) {
-		std::vector<double> coe0;
-		for (int j = 0; j < 6; j++) coe0.push_back(sats_coe0[i][j]);
-		std::vector<std::vector<double>> t_dv;
-
-		get_one_sat(i, X, imp, imp_idx, score, t_dv, coe0, sat_info_list);
 	}
 
 	AccessTableMultiSat(sat_info_list, AccessTable, score);
@@ -371,7 +371,7 @@ void get_score_info(const std::vector<double>& X, double* f_data, double& score,
 		else {
 			temp = 172800.0 - t;
 		}
-		if (temp > gap_temp && t < 115200.0) gap_temp = temp;
+		if (temp > gap_temp && t < 172800.0) gap_temp = temp;
 	}
 	gap_temp /= 3600.0;
 

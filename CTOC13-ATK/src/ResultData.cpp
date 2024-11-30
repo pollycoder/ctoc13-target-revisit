@@ -22,6 +22,8 @@ void ResultData::read_data(const std::string filename) {
 	std::ifstream file(filename);
 	std::string line;
 
+	double sum = 0.0;
+
 	while (std::getline(file, line)) {
 		std::istringstream iss(line);
 		std::vector<double> initial_coe(6);
@@ -38,6 +40,8 @@ void ResultData::read_data(const std::string filename) {
 			if (impulse_data.size() == 4) {
 				impulse_t_list.push_back(impulse_data[0]);
 				impulse_list.push_back({ impulse_data[1], impulse_data[2], impulse_data[3] });
+				double imp[3] = { impulse_data[1], impulse_data[2], impulse_data[3] };
+				sum += sqrt(imp[0] * imp[0] + imp[1] * imp[1] + imp[2] * imp[2]);
 			} else if (impulse_data.size() == 6) {
 				// Push the current satellite data to the vector
 				SatelliteData* sat = new SatelliteData();
@@ -55,6 +59,7 @@ void ResultData::read_data(const std::string filename) {
 		sat->set_value(initial_coe, impulse_t_list, impulse_list);
 		add_sat(sat);
 	}
+	std::cout << "Total impulse: " << sum << std::endl;
 }
 
 void ResultData::write_atk() {
