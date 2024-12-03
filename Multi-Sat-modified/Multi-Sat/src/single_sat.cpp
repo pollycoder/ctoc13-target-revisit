@@ -296,22 +296,24 @@ double obj_func(const std::vector<double>& X, std::vector<double>& grad, void* f
 	return score;
 }
 
-
 void get_one_sat(int& i, const std::vector<double>& X, int& imp, int& imp_idx, double& score, std::vector<std::vector<double>>& t_dv, std::vector<double>& coe0, std::vector<std::tuple<std::vector<double>, std::vector<std::vector<double>>>>& sat_info_list)
 {
 	int fixed_idx = 0;
 	// 如果是脉冲星,按照次数加入脉冲信息，不是则信息表为空
 	// 先把已经加入的脉冲信息加入
-	for(const auto& list:fixed_imp[i]){
-		t_dv.push_back(list);
+	if(!fixed_imp.empty()){
+		for(const auto& list:fixed_imp[i]){
+			t_dv.push_back(list);
+		}
 	}
+	
 
 	if (std::find(imp_sat.begin(), imp_sat.end(), i) != imp_sat.end()) {
 		for (int j = 0; j < imp_num[imp_idx]; j++) {
 			double t_temp;
 			if (t_dv.empty()) t_temp = 0.0;
 			else t_temp = t_dv.back().front();
-			t_temp += X[imp * 4] * (172800.0 - t_temp);
+			t_temp += X[imp * 4] * (t_anchor - t_temp);
 			double dv[3] = {
 				(X[imp * 4 + 1] - 0.5) * imp_max,
 				(X[imp * 4 + 2] - 0.5) * imp_max,
@@ -319,6 +321,7 @@ void get_one_sat(int& i, const std::vector<double>& X, int& imp, int& imp_idx, d
 			};
 			std::vector<double> t_dv_one = { t_temp, dv[0], dv[1], dv[2] };
 			t_dv.push_back(t_dv_one);
+			//fixed_imp[i].push_back(t_dv_one);
 			imp++;
 		}
 		imp_idx++;
@@ -371,7 +374,7 @@ void get_score_info(const std::vector<double>& X, double* f_data, double& score,
 		else {
 			temp = 172800.0 - t;
 		}
-		if (temp > gap_temp && t < 172800.0) gap_temp = temp;
+		if (temp > gap_temp && t < t_anchor) gap_temp = temp;
 	}
 	gap_temp /= 3600.0;
 
@@ -392,90 +395,83 @@ void get_score_info(const std::vector<double>& X, double* f_data, double& score,
 	}
 }
 
-double obj_func_coelist(const std::vector<double>& X, std::vector<double>& grad, void* f_data) {
+
+double obj_func_4sat(const std::vector<double>& X, std::vector<double>& grad, void* f_data) {
 	//auto beforeTime = std::chrono::steady_clock::now();
 	double* para = static_cast<double*>(f_data);
 	double score;
-	std::vector<std::vector<double>> coe_list;
+	std::vector<std::tuple<std::vector<double>, std::vector<std::vector<double>>> > sat_info_list;
 	std::vector<std::vector<double>> AccessTable;
 
-	get_score_info(X, para, score, coe_list, AccessTable);
+	get_score_info_4sat(X, score, sat_info_list, AccessTable);
 	/*auto afterTime = std::chrono::steady_clock::now();
 	double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
 	std::cout << duration_second << std::endl;*/
 	return score;
+
 }
 
-void get_score_info(const std::vector<double>& X, double* f_data, double& score,
-	std::vector<std::vector<double>>& coe_list,
+void get_score_info_4sat(const std::vector<double>& X, double& score,
+	std::vector<std::tuple<std::vector<double>, std::vector<std::vector<double>>>>& sat_info_list,
 	std::vector<std::vector<double>>& AccessTable) {
 	score = 0.0;
-	std::vector<std::vector<double>> rv0_list;
-	coe_list.resize(TreeNum);
-	
+
+	int imp = 0;											// 记录已加脉冲的次数
+	int imp_idx = 0;										// 记录已加脉冲星的个数
 	for (int i = 0; i < TreeNum; i++) {
-		coe_list[i].resize(6);
-		if (i > 3) {//低纬度暂时不管
-			coe_list[i][0] = sats_coe0[i][0];		// sma：扰动200km
-			coe_list[i][1] = sats_coe0[i][1];		// ecc：扰动0.01
-			coe_list[i][2] = sats_coe0[i][2];//inc：扰动10°
-			coe_list[i][3] = sats_coe0[i][3];//raan：扰动90°
-			coe_list[i][4] = sats_coe0[i][4];//raan：扰动360°
-			coe_list[i][5] = sats_coe0[i][5];//raan：扰动360°
-		}
-		else {
-			coe_list[i][0] = sats_coe0[i][0] + (X[3 * i] - 0.5) * 100;			// sma：扰动50km
-			coe_list[i][1] = sats_coe0[i][1] + (X[3 * i + 1] - 0.5) * 0.04;		// ecc：扰动0.02
-			coe_list[i][2] = sats_coe0[i][2];									// inc：不扰动
-			coe_list[i][3] = sats_coe0[i][3] + (X[3 * i + 2] - 0.5) * D2PI;		// raan：不扰动
-			coe_list[i][4] = sats_coe0[i][4];									// ap：不扰动
-			coe_list[i][5] = sats_coe0[i][5];									// ta：不扰动
-			double apo = coe_list[i][0] * (1 + coe_list[i][1]) - Re_km;
-			double peri = coe_list[i][0] * (1 - coe_list[i][1]) - Re_km;
-			if (coe_list[i][1] <= 0.0 || coe_list[i][1] >= 1.0) { score += penalty; }
-			score += (std::max(apo, hmax) - hmax) * (std::max(apo, hmax) - hmax);
-			score += (std::min(peri, hmin) - hmin) * (std::min(peri, hmin) - hmin);
-		}
-		double coe0[6] = { coe_list[i][0], coe_list[i][1], coe_list[i][2], coe_list[i][3], coe_list[i][4], coe_list[i][5] };
-		int flag;
-		double rv0[6];
-		coe2rv(flag, rv0, coe0, mu_km_s);
-		std::vector<double> rv0_vec = { rv0[0], rv0[1], rv0[2], rv0[3], rv0[4], rv0[5] };
-		rv0_list.push_back(rv0_vec);
+		std::vector<double> coe0;
+		for (int j = 0; j < 6; j++) coe0.push_back(sats_coe0[i][j]);
+		std::vector<std::vector<double>> t_dv;
+
+		get_one_sat(i, X, imp, imp_idx, score, t_dv, coe0, sat_info_list);
 	}
-	//AccessTableMultiSat(sat_info_list, AccessTable, score);
-	MultiSat_AccessPointObjects(rv0_list, 0.0, 172800.0, 60.0, TargetNum, AccessTable);
+
+	double sum = 0.0;
+	for (const auto& it : sat_info_list) {
+		double total_dv = 0.0;
+		std::vector<std::vector<double>> t_dv = std::get<1>(it);
+		for (const auto& imp : t_dv) {
+			double im[3] = { imp[1], imp[2], imp[3] };
+			total_dv += V_Norm2(im, 3);
+		}
+		if (total_dv > 0.999) score += (total_dv - 0.999) * 100.0;
+		sum += total_dv;
+	}
+
+	AccessTableMultiSat(sat_info_list, AccessTable, score);
 
 	std::vector<double> max_revisit_gap;
 	max_reseetime(AccessTable, max_revisit_gap);
-	double gap_temp = AccessTable.back().front();
-	int id = 0;
-	for (const auto& t : AccessTable.back()) {
-		id++;
-		double temp;
-		if (id < AccessTable.back().size()) {
-			temp = AccessTable.back()[id] - t;
+
+	for (int i = 0; i < max_revisit_gap.size(); i++) {
+		if (std::find(ground_target_uncompleted.begin(), ground_target_uncompleted.end(), i) != ground_target_uncompleted.end()) {
+			// 未完成的地面目标
+			double gap_temp;
+			if (!AccessTable[i].empty()) {
+				gap_temp = AccessTable[i].front();
+				int id = 0;
+				for (const auto& t : AccessTable[i]) {
+					id++;
+					double temp;
+					if (id < AccessTable[i].size()) {
+						temp = AccessTable[i][id] - t;
+					}
+					else {
+						temp = 172800.0 - t;
+					}
+					if (temp > gap_temp && t < t_anchor) gap_temp = temp;
+				}
+			}
+			else {
+				gap_temp = t_anchor;
+			}
+			gap_temp /= 3600.0;
+			score += std::max(gap_temp, 6.0) - 6.0;						// 优化到0最好
 		}
 		else {
-			temp = 172800.0 - t;
+			// 本来就完成的，要求还得完成，船暂时不管
+			if(i != TargetNum - 1) score += (std::max(max_revisit_gap[i], 6.0) - 6.0) * 1000.0;
+			//else score += (std::max(max_revisit_gap[i], 12.0) - 12.0);
 		}
-		if (temp > gap_temp && t < 43200.0) gap_temp = temp;
 	}
-	gap_temp /= 3600.0;
-	
-
-	int idx = 0;
-	for (const auto& gap : max_revisit_gap) {
-		idx++;
-		if (idx != TargetNum) {
-			//score -= (6.0 / std::max(6.0, gap)) * (6.0 / std::max(6.0, gap));
-			score += (std::max(gap, 6.0) - 6.0) * 100.0;
-		}
-		else {
-			score += gap_temp;
-		}
-		
-		
-	}
-
 }

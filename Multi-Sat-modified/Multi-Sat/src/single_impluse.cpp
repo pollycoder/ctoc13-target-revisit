@@ -316,7 +316,7 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 			em = e0 + k2 * (am / a0 - 1.0);
 			omegam = omega0 + k1 * (am / a0 - 1.0);
 			M0m = M00 - k3 * (am / a0 - 1.0);
-			/*if (em < 0.0 || em > 1.0) {
+			if (em < 0.0 || em > 1.0) {
 				flag0 = 0;
 				return;
 			}
@@ -324,14 +324,14 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 				flag0 = 0;
 				return;
 			}
-			if (am > Re_km + 1000.0) {
+			/*if (am > Re_km + 1000.0) {
 				flag0 = 0;
 				return;
 			}*/
-			/*if (fabs(am - 0.0) < 1.0e-5) {
+			if (fabs(am - 0.0) < 1.0e-5) {
 				flag0 = 0;
 				return;
-			}*/
+			}
 
 			//平根转化为瞬根，由于平瞬根转换程序中使用的Re为m，在这里也临时改成m来计算
 			mcoe[0] = am * 1000.0;

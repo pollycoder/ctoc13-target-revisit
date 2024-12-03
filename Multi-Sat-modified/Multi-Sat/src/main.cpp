@@ -11,6 +11,7 @@
 * 02	   2024-09-28	 周懿	   测试观测打靶函数
 * 03	   2024-09-30	 周		   测试树搜索
 * 04	   2024-10-15	 周		   开始初值探索
+* 05	   2024-12-03	 周		   自动全局优化脉冲
 ****************************************************************************/
 #include <stdlib.h>
 #include "multitree_beam.h"
@@ -21,9 +22,8 @@
 #include <iomanip>
 #include "main.h"
 
-
-
 const std::string space = " ";
+std::vector<std::vector<std::vector<double>>> fixed_imp = { {}, {}, {}, {}, {}, {}, {}, {} };
 
 void output_result(std::vector<std::tuple<std::vector<double>, std::vector<std::vector<double>>>>& sat_info_list)
 {
@@ -116,12 +116,19 @@ void multi_sat_opt() {
 		else X.push_back(0.5);
 		//X.push_back(0.5);
 	}
-	//DE_parallel(obj_func, nullptr, X, f, var_num, 80, 3000, 100);
-	//nlopt_main(obj_func, nullptr, X, f, var_num, 0, 10000);
+	DE_parallel(obj_func, nullptr, X, f, var_num, 80, 3000, 100);
+	nlopt_main(obj_func, nullptr, X, f, var_num, 0, 10000);
 
 	get_score_info(X, nullptr, f, sat_info_list, AccessTable);
-	/*std::vector<std::vector<double>> coelist;
-	get_score_info(X, nullptr, f, coelist, AccessTable);*/
+	for (int i = 0; i < fixed_imp.size(); i++) {
+		fixed_imp[i].insert(fixed_imp[i].end(), std::get<1>(sat_info_list[i]).begin(), std::get<1>(sat_info_list[i]).end());
+	}
+	for (const auto& tdv : fixed_imp) {
+		for (const auto& el : tdv) {
+			std::cout << el[0] << space << el[1] << space << el[2] << space << el[3] << std::endl;
+		}
+	}
+	
 
 	std::cout << "f = " << f << std::endl;
 	std::vector<double> revisit_gap;
@@ -141,7 +148,7 @@ void multi_sat_opt() {
 	
 	output_result(sat_info_list);
 	// 16核，0.025s运行一轮
-	// 预计4h完成
+	// 预计1.67h完成
 }
 
 
@@ -173,15 +180,40 @@ void max_revisit_verify() {
 	}
 }
  
+void shooting_test()
+{
+	double rv0[6], rvf[6], geo[2];
+	int flag, NR;
+
+	get_target_geogetic(18, 0.0, geo);
+
+	for (int i = 0; i < 4; i++) {
+		coe2rv(flag, rv0, sats_coe0[i], mu_km_s);
+		std::cout << "============================================" << std::endl;
+		std::cout << "Satellite " << i << std::endl;
+		std::cout << "--------------------------------------------" << std::endl;
+		for (int N = 1; N < 21; N++) {
+			for (int bra = 0; bra < 2; bra++) {
+				double m0 = 1000.0, mf, tf, dv[3];
+				NR = N;
+				single_imp(m0, 0.0, rv0, geo[1], geo[0], 1, flag, mf, tf, dv, NR, bra);
+				if (flag && tf < 21600.0 && V_Norm2(dv, 3) < 1.0) {
+					std::cout << "NR = " << NR << ", branch = " << bra << std::endl;
+					std::cout << "tf = " << tf << std::endl;
+					std::cout << "dv = " << dv[0] << " " << dv[1] << " " << dv[2] << std::endl;
+					std::cout << "imp = " << V_Norm2(dv, 3) << std::endl;
+					std::cout << "--------------------------------------------" << std::endl;
+				}
+			}
+		}
+		std::cout << "============================================" << std::endl;
+		std::cout << std::endl;
+	}
+}
+
 int main() {
-	//multi_sat_opt();
-	//multitree_search();
-	double coe0[6] = { 7194.816586065, 0.025478, 28.362595 * D2R, 115.090457 * D2R, 197.666127 * D2R, 351.307786 * D2R };
-	double rv[6]; int flag;
-	coe2rv(flag, rv, coe0, mu_km_s);
-	propagate_j2(rv, rv, 7490.992674, 0.0);
-	rv2coe(flag, coe0, rv, mu_km_s);
-	std::cout << std::setprecision(14) << coe0[0] << " " << coe0[1] << " " << coe0[2] << " " << coe0[3] << " " << coe0[4] << " " << coe0[5] << std::endl;
+	
+	multi_sat_opt();
 	
 	return 0;
 }

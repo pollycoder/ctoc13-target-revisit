@@ -54,3 +54,7 @@ void get_score_info(const std::vector<double>& X, double* f_data, double& score,
 double obj_func_coelist(const std::vector<double>& X, std::vector<double>& grad, void* f_data);
 void get_score_info(const std::vector<double>& X, double* f_data, double& score,
 	std::vector<std::vector<double>>& coe_list, std::vector<std::vector<double>>& AccessTable);
+
+double obj_func_4sat(const std::vector<double>& X, std::vector<double>& grad, void* f_data);
+
+void get_score_info_4sat(const std::vector<double>& X, double& score, std::vector<std::tuple<std::vector<double>, std::vector<std::vector<double>>>>& sat_info_list, std::vector<std::vector<double>>& AccessTable);
