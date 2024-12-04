@@ -24,6 +24,7 @@
 
 const std::string space = " ";
 std::vector<std::vector<std::vector<double>>> fixed_imp = { {}, {}, {}, {}, {}, {}, {}, {} };
+double t_anchor = 43200.0;
 
 void output_result(std::vector<std::tuple<std::vector<double>, std::vector<std::vector<double>>>>& sat_info_list)
 {
@@ -123,6 +124,18 @@ void multi_sat_opt() {
 	for (int i = 0; i < fixed_imp.size(); i++) {
 		fixed_imp[i].insert(fixed_imp[i].end(), std::get<1>(sat_info_list[i]).begin(), std::get<1>(sat_info_list[i]).end());
 	}
+	t_anchor += 43200.0;
+	if (f < 3.0) std::cout << "Pipeline 1 Succeeded." << std::endl;
+	
+
+	DE_parallel(obj_func, nullptr, X, f, var_num, 80, 3000, 100);
+	nlopt_main(obj_func, nullptr, X, f, var_num, 0, 10000);
+
+	get_score_info(X, nullptr, f, sat_info_list, AccessTable);
+	for (int i = 0; i < fixed_imp.size(); i++) {
+		fixed_imp[i].insert(fixed_imp[i].end(), std::get<1>(sat_info_list[i]).begin(), std::get<1>(sat_info_list[i]).end());
+	}
+
 	for (const auto& tdv : fixed_imp) {
 		for (const auto& el : tdv) {
 			std::cout << el[0] << space << el[1] << space << el[2] << space << el[3] << std::endl;
@@ -148,7 +161,7 @@ void multi_sat_opt() {
 	
 	output_result(sat_info_list);
 	// 16核，0.025s运行一轮
-	// 预计1.67h完成
+	// 预计8h完成
 }
 
 
