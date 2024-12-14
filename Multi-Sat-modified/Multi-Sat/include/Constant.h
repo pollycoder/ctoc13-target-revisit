@@ -119,6 +119,7 @@ const double hmin = 200.0;
 const double imp_max = 2.0;
 
 extern double t_anchor;
+extern double t_gap;
 
 // 第一个vector是脉冲星的编号，第二个vector是脉冲的次数
 const std::vector<int> imp_sat = { 4, 5, 6, 7 };

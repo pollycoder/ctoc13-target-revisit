@@ -319,6 +319,13 @@ void get_one_sat(int& i, const std::vector<double>& X, int& imp, int& imp_idx, d
 				(X[imp * 4 + 2] - 0.5) * imp_max,
 				(X[imp * 4 + 3] - 0.5) * imp_max
 			};
+
+			double dvnorm = V_Norm2(dv, 3);
+			if (dvnorm < 1.0e-8) {
+				if (t_dv.empty()) t_temp = 0.0;
+				else t_temp = t_dv.back().front();
+				dv[0] = 0.0; dv[1] = 0.0; dv[2] = 0.0;
+			}
 			std::vector<double> t_dv_one = { t_temp, dv[0], dv[1], dv[2] };
 			t_dv.push_back(t_dv_one);
 			//fixed_imp[i].push_back(t_dv_one);
@@ -335,6 +342,7 @@ void get_score_info(const std::vector<double>& X, double* f_data, double& score,
 	std::vector<std::tuple<std::vector<double>, std::vector<std::vector<double>>>>& sat_info_list,
 	std::vector<std::vector<double>>& AccessTable) {
 	score = 0.0;
+	sat_info_list.clear();
 
 	int imp = 0;											// 记录已加脉冲的次数
 	int imp_idx = 0;										// 记录已加脉冲星的个数
