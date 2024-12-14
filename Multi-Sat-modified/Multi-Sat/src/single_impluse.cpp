@@ -316,15 +316,19 @@ void single_imp(const double m0, const double t0, const double* rv0, const doubl
 			em = e0 + k2 * (am / a0 - 1.0);
 			omegam = omega0 + k1 * (am / a0 - 1.0);
 			M0m = M00 - k3 * (am / a0 - 1.0);
+
+			double peri_m = am * (1 - em);
+			double apo_m = am * (1 + em);
+
 			if (em < 0.0 || em > 1.0) {
 				flag0 = 0;
 				return;
 			}
-			if (am  < Re_km) {
+			/*if (peri_m  < Re_km + 180.0) {
 				flag0 = 0;
 				return;
 			}
-			/*if (am > Re_km + 1000.0) {
+			if (apo_m > Re_km + 1100.0) {
 				flag0 = 0;
 				return;
 			}*/
@@ -499,10 +503,10 @@ void single_imp_ship(const double m0, const double t0, const double* rv0, const 
 			em = e0 + k2 * (am / a0 - 1.0);
 			omegam = omega0 + k1 * (am / a0 - 1.0);
 			M0m = M00 - k3 * (am / a0 - 1.0);
-			/*if (em < 0.0 || em > 1.0) {
+			if (em < 0.0 || em > 1.0) {
 				flag0 = 0;
 				return;
-			}*/
+			}
 			/*if (am < Re_km + 200.0) {
 				flag0 = 0;
 				return;
@@ -903,9 +907,20 @@ void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& 
 		double r = V_Norm2(R0, 3);
 		double gamma = 20.0 * D2R;
 		double beta = asin(r * sin(gamma) / Re_km) - gamma;
-		int mesh_size = 50, flag_temp = 0;
+		int mesh_size = 100, flag_temp = 0;
 		double dv_norm = 1.0e10;
 		double dv_temp[3], tf_temp = 0.0, lambda_temp, phi_temp;
+
+		single_imp(m0, t0, RV0, lambda, phi, 1, flag_temp, mf, tf_temp, dv_temp, NR, branch);
+		if (flag_temp == 1) {
+			if (V_Norm2(dv_temp, 3) < dv_norm) {
+				flag = 1;
+				dv_norm = V_Norm2(dv_temp, 3);
+				memcpy(dv, dv_temp, 3 * sizeof(double));
+				tf = tf_temp;
+			}
+		}
+
 		for (int i = 0; i < mesh_size; i++) {
 			lambda_temp = lambda + 2.0 * beta / mesh_size * (i - mesh_size / 2.0);
 
@@ -966,7 +981,7 @@ void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& 
 
 	double impulse = 0.0;
 	std::vector<double> X = { 0.5, 0.5, 0.5, 0.5 };
-	nlopt_main(obj_func_shooting, f_data, X, impulse, X.size(), 0, 3000);		//不输出
+	nlopt_main(obj_func_shooting, f_data, X, impulse, X.size(), 0, 50000);		//不输出
 
 	perturbation(dv, tf, X);
 
