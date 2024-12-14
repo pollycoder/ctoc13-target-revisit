@@ -24,11 +24,13 @@
 
 const std::string space = " ";
 std::vector<std::vector<std::vector<double>>> fixed_imp = { {}, {}, {}, {}, {}, {}, {}, {} };
-double t_anchor = 43200.0;
+double t_anchor = 45000.0;
+double t_gap = 21600.0;
 
-void output_result(std::vector<std::tuple<std::vector<double>, std::vector<std::vector<double>>>>& sat_info_list)
+void output_result(std::vector<std::tuple<std::vector<double>, std::vector<std::vector<double>>>>& sat_info_list, const double t)
 {
-	std::ofstream fout0("../output_result/result.txt");
+	std::ofstream fout0("../output_result/result.txt", std::ios::app);
+	fout0 << "Breakpoint " << ": " << t << "s" << std::endl;
 	for (const auto& sat : sat_info_list) {
 		// 先写入根数
 		for (const auto& coe : std::get<0>(sat)) {
@@ -46,6 +48,7 @@ void output_result(std::vector<std::tuple<std::vector<double>, std::vector<std::
 			}
 		}
 	}
+	fout0 << std::endl;
 }
 
 
@@ -66,50 +69,16 @@ void multitree_search() {
 }
 
 
-// 读取数据库，筛选并生成新的数据库
-void read_db() {
-	const std::string input_filename1 = "../output_result/single_sat_21_R.bin";
-	const std::string output_filename1 = "../output_result/single_better_21_R.bin";
-	int threshold = 10;
-
-	auto beforeTime = std::chrono::steady_clock::now();
-	if (filter_bin_file(input_filename1, output_filename1, threshold)) {
-		auto afterTime = std::chrono::steady_clock::now();
-		double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
-		std::cout << "1号数据库处理完成，总耗时：" << duration_second << "秒" << std::endl;
-	}
-	else {
-		std::cerr << "处理失败" << std::endl;
-	}
-	// 0.001s读取一条数据，预计4.16h跑完一个数据库
-
-	const std::string input_filename2 = "../output_result/single_sat_21_P.bin";
-	const std::string output_filename2 = "../output_result/single_better_21_P.bin";
-
-	beforeTime = std::chrono::steady_clock::now();
-	if (filter_bin_file(input_filename2, output_filename2, threshold)) {
-		auto afterTime = std::chrono::steady_clock::now();
-		double duration_second = std::chrono::duration<double>(afterTime - beforeTime).count();
-		std::cout << "2号数据库处理完成，总耗时：" << duration_second << "秒" << std::endl;
-	}
-	else {
-		std::cerr << "处理失败" << std::endl;
-	}
-	// 0.001s读取一条数据，预计4.16h跑完一个数据库
-
-	// 16核，总计8.33h完成
-
-}
-
-
 void multi_sat_opt() {
+	std::ofstream fout0("../output_result/result.txt");
+	fout0 << "" << std::endl;
 	int var_num = std::accumulate(imp_num.begin(), imp_num.end(), 0) * 4;
 	std::vector<double> X;
 	double f;
 	std::vector<std::vector<double>> AccessTable;
 	std::vector<std::tuple<std::vector<double>, std::vector<std::vector<double>>>> sat_info_list;
 
-
+	
 	for (int i = 0; i < var_num; i++) {
 		if (i % 4 == 0) {
 			X.push_back(0.5);
@@ -117,50 +86,39 @@ void multi_sat_opt() {
 		else X.push_back(0.5);
 		//X.push_back(0.5);
 	}
-	DE_parallel(obj_func, nullptr, X, f, var_num, 80, 3000, 100);
-	nlopt_main(obj_func, nullptr, X, f, var_num, 0, 10000);
 
-	get_score_info(X, nullptr, f, sat_info_list, AccessTable);
-	for (int i = 0; i < fixed_imp.size(); i++) {
-		fixed_imp[i].insert(fixed_imp[i].end(), std::get<1>(sat_info_list[i]).begin(), std::get<1>(sat_info_list[i]).end());
-	}
-	t_anchor += 43200.0;
-	if (f < 3.0) std::cout << "Pipeline 1 Succeeded." << std::endl;
-	
+	int idx = 0;
+	while (true) {
+		idx++;
+		DE_parallel(obj_func, nullptr, X, f, var_num, 80, 3000, 100);
+		nlopt_main(obj_func, nullptr, X, f, var_num, 0, 1);
 
-	DE_parallel(obj_func, nullptr, X, f, var_num, 80, 3000, 100);
-	nlopt_main(obj_func, nullptr, X, f, var_num, 0, 10000);
-
-	get_score_info(X, nullptr, f, sat_info_list, AccessTable);
-	for (int i = 0; i < fixed_imp.size(); i++) {
-		fixed_imp[i].insert(fixed_imp[i].end(), std::get<1>(sat_info_list[i]).begin(), std::get<1>(sat_info_list[i]).end());
-	}
-
-	for (const auto& tdv : fixed_imp) {
-		for (const auto& el : tdv) {
-			std::cout << el[0] << space << el[1] << space << el[2] << space << el[3] << std::endl;
+		get_score_info(X, nullptr, f, sat_info_list, AccessTable);
+		for (int i = 0; i < fixed_imp.size(); i++) {
+			if (!std::get<1>(sat_info_list[i]).empty()) {
+				fixed_imp[i].push_back(std::get<1>(sat_info_list[i]).back());
+			}
 		}
-	}
-	
-
-	std::cout << "f = " << f << std::endl;
-	std::vector<double> revisit_gap;
-	max_reseetime(AccessTable, revisit_gap);
-	for (const auto& t : revisit_gap) {
-		std::cout << t << std::endl;
-	}
-
-	/*std::ofstream fout0("../output_result/result.txt");
-	for (const auto& coe : coelist) {
-		for (const auto& oe : coe) {
-			fout0 << std::setprecision(14) << oe << space;
+		t_anchor += t_gap;
+		if (f <= 3.0) {
+			std::cout << "Pipeline " << idx << " Succeeded." << std::endl;
 		}
-		fout0 << std::endl;
-	}*/
-	
-	
-	output_result(sat_info_list);
-	// 16核，0.025s运行一轮
+		else {
+			std::cout << "Revisiting task failed." << std::endl;
+			break;
+		}
+
+
+		std::cout << "f = " << f << std::endl;
+		std::vector<double> revisit_gap;
+		max_reseetime(AccessTable, revisit_gap);
+		for (const auto& t : revisit_gap) {
+			std::cout << t << std::endl;
+		}
+
+		output_result(sat_info_list, t_anchor - t_gap);
+	}
+	// 16核，2h优化一轮
 	// 预计8h完成
 }
 
