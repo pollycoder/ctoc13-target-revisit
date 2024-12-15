@@ -851,15 +851,13 @@ double obj_func_shooting(const std::vector<double>& X, std::vector<double>& grad
 	//}
 
 
-	
-	//propagate_j2linear (RV1, RVf, t0, tf);
 	//propagate_j2(RV1, RVf, t0, tf, 1e-3, 1e-5);
-	rv02rvf(flag, RVf, RV0, tf - t0, mu_km_s);
+	rv02rvf(flag, RVf, RV1, tf - t0, mu_km_s);
 	double target_R[3];
 	get_target_R(id, tf, target_R);
 	bool ifVisible = is_target_visible(RVf, target_R, 20.0 * D2R);
 	if (RVf[0] != RVf[0]) return penalty;
-	if(!ifVisible) { 
+	if (!ifVisible) {
 		double Rf[3] = { RVf[0], RVf[1], RVf[2] };
 		double Rf_norm = V_Norm2(Rf, 3);
 		double Rf_fixed[3];
@@ -907,7 +905,7 @@ void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& 
 		double r = V_Norm2(R0, 3);
 		double gamma = 20.0 * D2R;
 		double beta = asin(r * sin(gamma) / Re_km) - gamma;
-		int mesh_size = 100, flag_temp = 0;
+		int mesh_size = 20, flag_temp = 0;
 		double dv_norm = 1.0e10;
 		double dv_temp[3], tf_temp = 0.0, lambda_temp, phi_temp;
 
@@ -981,7 +979,7 @@ void obs_shooting(int& flag, double* dv, double& tf, double* RVf, const double& 
 
 	double impulse = 0.0;
 	std::vector<double> X = { 0.5, 0.5, 0.5, 0.5 };
-	nlopt_main(obj_func_shooting, f_data, X, impulse, X.size(), 0, 50000);		//不输出
+	nlopt_main(obj_func_shooting, f_data, X, impulse, X.size(), 0, 10000);		//不输出
 
 	perturbation(dv, tf, X);
 

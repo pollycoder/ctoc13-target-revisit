@@ -25,7 +25,7 @@
 const std::string space = " ";
 std::vector<std::vector<std::vector<double>>> fixed_imp = { {}, {}, {}, {}, {}, {}, {}, {} };
 double t_anchor = 45000.0;
-double t_gap = 21600.0;
+double t_gap = 10800.0;
 
 void output_result(std::vector<std::tuple<std::vector<double>, std::vector<std::vector<double>>>>& sat_info_list, const double t)
 {
@@ -54,7 +54,7 @@ void output_result(std::vector<std::tuple<std::vector<double>, std::vector<std::
 
 // ¶à¿ÃÊ÷ËÑË÷£¨ÖØÆô£©
 void multitree_search() {
-	MultiTree multi_tree(1000, 4, 100, dv_max);
+	MultiTree multi_tree(10000, 4, 100, dv_max);
 
 	auto beforeTime = std::chrono::steady_clock::now();
 	multi_tree.Run();
@@ -156,10 +156,11 @@ void shooting_test()
 	double rv0[6], rvf[6], geo[2];
 	int flag, NR;
 
-	get_target_geogetic(3, 0.0, geo);
+	
 
 	for (int id = 0; id < TargetNum; id++) {
 		std::cout << "Target " << id + 1 << std::endl;
+		get_target_geogetic(id, 0.0, geo);
 		for (int i = 0; i < 4; i++) {
 			coe2rv(flag, rv0, sats_coe0[i], mu_km_s);
 			std::cout << "============================================" << std::endl;
@@ -171,7 +172,7 @@ void shooting_test()
 					NR = N;
 					//single_imp(m0, 0.0, rv0, geo[1], geo[0], 1, flag, mf, tf, dv, NR, bra);
 					obs_shooting(flag, dv, tf, rvf, 0.0, rv0, id, NR, bra);
-					if (flag && V_Norm2(dv, 3) < 1.0 && V_Norm2(dv, 3) > 0.001) {
+					if (flag && V_Norm2(dv, 3) < 1.0) {
 						std::cout << "NR = " << NR << ", branch = " << bra << std::endl;
 						std::cout << "tf = " << tf << std::endl;
 						std::cout << "dv = " << dv[0] << " " << dv[1] << " " << dv[2] << std::endl;
@@ -188,8 +189,9 @@ void shooting_test()
 
 int main() {
 	
-	//multi_sat_opt();
-	shooting_test();
+	multi_sat_opt();
+	//shooting_test();
+	//multitree_search();
 	
 	return 0;
 }

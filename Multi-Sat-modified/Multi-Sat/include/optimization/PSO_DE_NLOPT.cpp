@@ -465,7 +465,7 @@ void nlopt_main(double (*ObjFun)(const std::vector<double>& X, std::vector<doubl
 	opter.set_force_stop(1e-8);
 	opter.set_maxeval(maxstep);        //优化该次数后停止
 
-	std::vector<double> dx{ 0.003,0.0005 };
+	//std::vector<double> dx{ 0.001,0.01 };
 	std::vector<double> lb(X.size()), ub(X.size());     //下界 //上界
 	for (int i =0; i < X.size(); i++)
 	{

@@ -1,4 +1,5 @@
 ﻿#include "visibility_4_targets.h"
+#include "OrbitFun.h"
 
 #include <algorithm>
 
@@ -129,6 +130,8 @@ void AccessPointObjects(
         // t不是60的倍数，先进它的下一个60s
         t = t_start - fmod(t_start, dt) + dt;
         propagate_j2(rv_sat, rv_sat, t_start, t);
+        //int flag;
+        //rv02rvf(flag, rv_sat, rv_sat, t - t_start, mu_km_s);
     }
 
     // 定义卫星的半视场角（例如 10 度，转换为弧度）
@@ -175,6 +178,7 @@ void AccessPointObjects(
 
         // 传播卫星到时间 t
         int flag = propagate_j2(rv_sat_t, rv_sat_t, t - dt, t);
+        //rv02rvf(flag, rv_sat_t, rv_sat_t, dt, mu_km_s);
         if (flag != 1) {
             //std::cerr << "Orbit propagation failed at time " << t << std::endl;
             break;
@@ -241,6 +245,7 @@ void AccessPointCertainObjects(
 
         // 传播卫星到时间 t
         int flag = propagate_j2(rv_sat_t, rv_sat_t, t - dt, t);
+        //rv02rvf(flag, rv_sat_t, rv_sat_t, dt, mu_km_s);
         if (flag != 1) {
             //std::cerr << "Orbit propagation failed at time " << t << std::endl;
             break;

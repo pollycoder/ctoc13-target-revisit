@@ -50,6 +50,7 @@ inline bool MultiTree::SortTNC(const TNC& a, const TNC& b)
 		else {
 			return false;
 		}
+	//return a.op_index_.total_impulse_ < b.op_index_.total_impulse_;
 	
 }
 
@@ -379,7 +380,7 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 
 		bool total_flag = false;						// 记录是否有打靶成功过，有则记1
 		for (int bra = 0; bra < 2; bra++) {
-			for (int NR = 0; NR < 3; NR++) {
+			for (int NR = 0; NR < 6; NR++) {
 				double t0, h0, rv0[6], coe0[6], lambda0, phi0, tf, dv[3], a, e, hmin, hmax;
 				int flag;
 
@@ -409,6 +410,7 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 
 				if (tf - t0 > 10800.0) {
 					// 打靶时间过长
+					total_flag = 0;
 					continue;
 				}
 				
@@ -432,9 +434,9 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 				memcpy(temp_out.rv_acc_, rv0, 6 * sizeof(double));
 				memcpy(temp_out.dv_, dv, 3 * sizeof(double));
 
-				if (V_Norm2(dv, 3) > 0.001 && V_Norm2(dv, 3) < 1.0) {
+				/*if (V_Norm2(dv, 3) > 0.001 && V_Norm2(dv, 3) < 1.0) {
 					std::cout << "大脉冲点，脉冲为" << V_Norm2(dv, 3) << std::endl;
-				}
+				}*/
 
 				temp_out.time_acc_ = t0;
 				temp_out.point_id_ = 0;
@@ -462,7 +464,7 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 
 		// 打靶全都失败，则无机动验一次能否可见，如果非空则取第一个值，否则就是真看不到
 		// 如果是求解漏了，可以扩展短时的点，如果就是不可能看到，也可以保证一直有点可以扩展，停止只会因为解不可行
-		if (true) {
+		if (!total_flag) {
 			double t0 = node->problem_.node_info_.back().time_acc_;
 			double rv0[6], rvf[6];
 			memcpy(rv0, node->problem_.node_info_.back().rv_acc_, 6 * sizeof(double));
@@ -649,7 +651,7 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 		return;
 	}
 
-	if (tnc.op_index_.total_impulse_ > 3 * dv_max - 1.0e-3) {
+	if (tnc.op_index_.total_impulse_ > TreeNum * dv_max - 1.0e-3) {
 		return;// 脉冲超过，停止扩展该TNC
 	}
 
