@@ -25,7 +25,7 @@
 const std::string space = " ";
 std::vector<std::vector<std::vector<double>>> fixed_imp = { {}, {}, {}, {}, {}, {}, {}, {} };
 double t_anchor = 45000.0;
-double t_gap = 10800.0;
+double t_gap = 21600.0;
 
 void output_result(std::vector<std::tuple<std::vector<double>, std::vector<std::vector<double>>>>& sat_info_list, const double t)
 {
