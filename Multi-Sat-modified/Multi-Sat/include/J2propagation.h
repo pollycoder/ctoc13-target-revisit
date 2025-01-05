@@ -11,6 +11,9 @@
 #include <iomanip>
 #include <sstream>
 
+#include "OrbitFun.h"
+#include "OrbitMath.h"
+
 
 // 全局变量声明
 extern double targets_latitude_longitute[20][2];
@@ -47,7 +50,9 @@ int Dynamic_model(double t, const double* x, double* dx, const double* hpara);
 
 // 考虑 J2 扰动的轨道积分，从 t_start 积分到 t_end
 int propagate_j2(double rv0[6], double rvf[6], double t_start, double t_end, double abstol_value = 1.0e-10, double restol_value = 1.0e-10);
-void propagate_j2linear(double* RV0, double* RVf, const double& t0, const double& tf);
+//void propagate_j2linear(double* RV0, double* RVf, const double& t0, const double& tf);
+
+void propagate_linearJ2(const  double* rv0, double* rvf, double t0, double tf);
 
 // 获取给定目标编号和时间 t 下的地理坐标（纬度，经度）
 void get_target_geogetic(int id, double t, double* Geodetic);

@@ -1,5 +1,7 @@
 #include "multitree_beam.h"
 
+#include <unordered_map>
+
 #include "OrbitMath.h"
 #include "single_impluse.h"
 
@@ -33,24 +35,26 @@ bool sort_by_out(const OutputResult& a, const OutputResult& b)
 ****************************************************************************/
 inline bool MultiTree::SortTNC(const TNC& a, const TNC& b)
 {
-		double a_ave_gap = a.op_index_.time_cost;
-		double b_ave_gap = b.op_index_.time_cost;
-		if (a_ave_gap < b_ave_gap) {
-			// 同样时间看的点最多者为佳
-			return true;
-		}
-		else if (a_ave_gap == b_ave_gap) {
-			if (a.op_index_.time_min < b.op_index_.time_min) {
-				return true;
-			}
-			else {
-				return false;
-			}
-		}
-		else {
-			return false;
-		}
-	//return a.op_index_.total_impulse_ < b.op_index_.total_impulse_;
+		//double a_ave_gap = a.op_index_.time_cost;
+		//double b_ave_gap = b.op_index_.time_cost;
+		//if (a_ave_gap < b_ave_gap) {
+		//	// 同样时间看的点最多者为佳
+		//	return true;
+		//}
+		//else if (a_ave_gap == b_ave_gap) {
+		//	if (a.op_index_.time_min < b.op_index_.time_min) {
+		//		return true;
+		//	}
+		//	else {
+		//		return false;
+		//	}
+		//}
+		//else {
+		//	return false;
+		//}
+
+	return a.op_index_.total_impulse_ < b.op_index_.total_impulse_;
+	//return a.op_index_.time_cost < b.op_index_.time_cost;
 	
 }
 
@@ -72,7 +76,7 @@ void MultiTree::unique_remove(std::vector<TNC>& expandinglist)
 	std::vector<TNC> new_expandinglist;
 	new_expandinglist.reserve(W_);
 
-	for (int i = 0; i<expandinglist.size()-1; i++) //每次删除后大小都会变
+	for (int i = 0; i<expandinglist.size(); i++) //每次删除后大小都会变
 	{
 		//if ( !EqualTNC(expandinglist[i],expandinglist[i+1])) //相等
 		//{
@@ -300,19 +304,16 @@ std::vector<Node*> Tree::ExpandNode(Node* node, const int* visited, const std::v
 
 	std::vector<Node*> expandnodes;                 //扩展子节点
 
-	
 	for (int i = 0; i < problem_.size(); i++)
 	{
-		
-
 		// 我们在problems_里面挑选要扩展的节点
 		// 扩展应该是都要扩展的
 		if (visited[problem_[i].node_info_.back().point_id_] > 0 || V_Norm2(problem_[i].node_info_[0].dv_, 3) > dv_max_) continue; //已经访问过 大于dv_max
 
 		int id = problem_[i].node_info_.back().point_id_;
-		
+		int t_60_int = static_cast<int>(round(problem_[i].node_info_.back().time_acc_/60.0));
 		auto ifchild = std::find_if(node->child_.begin(), node->child_.end(),
-			[id](Node* a) {return a->key_ == id; }); //判断该点是否在其子节点内
+			[id, t_60_int](Node* a) {return a->key_ == id*1e4 + t_60_int; }); //判断该点是否在其子节点内
 
 		if (ifchild == node->child_.end()) //不存在子节点
 		{
@@ -323,7 +324,6 @@ std::vector<Node*> Tree::ExpandNode(Node* node, const int* visited, const std::v
 		{
 			Node* temp_node = new Node(node, problem_[i]);
 			expandnodes.push_back(temp_node);           //放入新节点
-		
 		}
 	}
 
@@ -338,173 +338,243 @@ std::vector<Node*> Tree::ExpandNode(Node* node, const int* visited, const std::v
 * 输    出 : std::vector<TNC>& newTNCs  新扩展的tncs
 ****************************************************************************/
 
+//rv0 是dv前
+void calculate_node_problem_info(int target_id, double t0, double rv0[6], double tf, double dv[3], double rvf[6], Node_problem & temp)
+{
+	OutputResult temp_out, temp_out2; //机动的信息，机动后的信息
+
+	temp_out.action_ = 1;
+	for (int i = 0; i < 3; i++)  rv0[3 + i] += dv[i];
+	//保存的是dv机动后的rv信息
+	memcpy(temp_out.rv_acc_, rv0, 6 * sizeof(double));
+	memcpy(temp_out.dv_, dv, 3 * sizeof(double));
+
+	temp_out.time_acc_ = t0;
+	temp_out.point_id_ = 0;
+	temp.node_info_.push_back(temp_out);
+
+	temp_out2.action_ = 2;
+	temp_out2.time_acc_ = tf;
+	memcpy(temp_out2.rv_acc_, rvf, 6 * sizeof(double));
+	for (int i = 0; i < 3; i++) temp_out2.dv_[i] = 0.0;
+	if (fabs(tf - 86400.0 * 2.0) < 1.0e-5) {
+		temp_out2.action_ = 3;
+		temp_out2.point_id_ = 0;
+	}
+	else {
+		temp_out2.point_id_ = target_id + 1;
+	}
+
+	//最后一个放tf的子节点
+	temp.node_info_.push_back(temp_out2);
+}
+
 // TODO: 去掉AccessPointObjects的调用，改成逐一打靶
 inline  void children_nodes(Node* node, const int* visited, std::vector<Node_problem>& child_node_problems)
 {
-	for (int j = 0; j < TargetNum; j++)
-	{
-		int last_id = node->problem_.node_info_.back().point_id_;
-		int last2_id = 100;
-		if (node->parent_ != nullptr) {
-			last2_id = node->parent_->problem_.node_info_.back().point_id_;
-		}
+	//扩展变成2种可能：1. 直接观测 2.机动后观测（如果中间有可见，则改为第一个可见点）
+	//每一种观测都是：机动1+观测2
+	int last_id = 100;
+	if (node->problem_.node_info_.back().action_== 2)
+		last_id = node->problem_.node_info_.back().point_id_ - 1; 
+	int last2_id = 100;
+	if (node->parent_ != nullptr) {
+		last2_id = node->parent_->problem_.node_info_.back().point_id_ - 1;
+	}
 
-		if (visited[j] > 0 || last_id == j + 1)
+	double t0, rv_sat[6];
+	t0 = node->problem_.node_info_.back().time_acc_;
+	memcpy(rv_sat, node->problem_.node_info_.back().rv_acc_, 6 * sizeof(double));
+
+	double rv_sat_after60[6];
+	propagate_j2(rv_sat, rv_sat_after60, t0, t0 + 60.0);
+
+	const double dt = 3600.0 * 3;
+	std::vector<std::vector<double>> accesstime_low; // 输出：可见性结果列表
+	AccessPointObjects(rv_sat_after60, t0 + 60.0, std::min(t0+ dt,86400.0 * 2.0), 60.0, 21, accesstime_low, 19.99 * D2R);
+
+	double angle_out = 45.0 * D2R;
+	std::vector<std::vector<double>> accesstime_large; // 输出：可见性结果列表
+	AccessPointObjects(rv_sat_after60, t0 + 60.0, std::min(t0 + dt, 86400.0 * 2.0), 60.0, 21, accesstime_large, angle_out);
+
+	//3小时内本来可见的不机动
+	//3小时内以angle_out可见的，才机动
+	std::vector<std::pair<int, double>> id_time_low;
+	std::vector<std::pair<int, double>> id_time_large;
+	for (int target_id = 0; target_id < TargetNum; target_id++)
+	{
+		if (accesstime_low[target_id].size() > 0) {
+			id_time_low.push_back(std::make_pair(target_id, accesstime_low[target_id][0]));
+		}
+		if (accesstime_large[target_id].size() > 0 && accesstime_low[target_id].size() == 0) {  //刨除掉原本可见的
+			id_time_large.push_back(std::make_pair(target_id, accesstime_large[target_id][0]));
+		}
+	}
+
+
+	// 扩展1：可见性，只扩展第一个
+	if (!id_time_low.empty())
+	{
+		// 搜索id_time_low中时间最小的点
+		auto min_time_point = id_time_low[0];
+		for (const auto& point : id_time_low) {
+			//if (point.first != last_id && point.first != last2_id) //防止跟之前两个看的重复，都不能一致
+			{
+				if (point.second < min_time_point.second)
+				{
+					min_time_point = point;
+				}
+			}
+		}
+		int target_id = min_time_point.first;
+		double tf = min_time_point.second;
+		Node_problem node_problem;
+		double dv[3] = { 0.0, 0.0,0.0 }; //为了与机动情况保持一致
+		double rvf[6]; 
+		propagate_j2(rv_sat, rvf, t0, tf);
+		calculate_node_problem_info(target_id, t0, rv_sat, tf, dv, rvf, node_problem);
+		child_node_problems.push_back(node_problem);
+	}
+	else
+	{
+		std::vector<std::vector<double>> accesstime_long; // 输出：可见性结果列表
+		AccessPointObjects(rv_sat_after60, t0 + 60.0,86400.0 * 2.0, 60.0, 21, accesstime_long, 19.99 * D2R);
+
+		// 搜索id_time_low中时间最小的点
+		std::pair<int, double> min_time_point = std::make_pair(100, 1.0e10);
+		for (int id_x = 0; id_x < accesstime_long.size(); id_x++)
+		{
+			if (accesstime_long[id_x].size() > 0)
+			{
+				if (accesstime_long[id_x][0] < min_time_point.second)
+				{
+					min_time_point = std::make_pair(id_x, accesstime_long[id_x][0]);
+				}
+			}
+		}
+		double dv[3] = { 0.0, 0.0,0.0 }; //为了与机动情况保持一致
+		double rvf[6];
+		propagate_j2(rv_sat_after60, rvf, t0 + 60.0, min_time_point.second);
+		Node_problem node_problem;
+		calculate_node_problem_info(min_time_point.first, t0, rv_sat, min_time_point.second, dv, rvf, node_problem);
+		child_node_problems.push_back(node_problem);
+	}
+
+	// 扩展2：机动后可见
+	for (int index_id = 0; index_id < id_time_large.size(); index_id++)
+	{
+		int target_id = id_time_large[index_id].first;
+		double t_f_possible = id_time_large[index_id].second;
+		if (visited[target_id] > 0)
 		{
 			continue;
 		}
-		double target_r0[3], t, rv_sat[6];
-		t = node->problem_.node_info_.back().time_acc_;
-		memcpy(rv_sat, node->problem_.node_info_.back().rv_acc_, 6 * sizeof(double));
-		get_target_R(j, t, target_r0);
 
-		// 如果同时可见多个点，那么都要计入
-		// 同时可见的点可能在不同TNC顺序不同，但没关系
-		bool ifVisible = is_target_visible(rv_sat, target_r0, 20.0 * D2R);
-		if (ifVisible) {
-			if (last2_id == j + 1) {
-				//出现自锁，跳过
-				continue;
-			}
-			Node_problem temp;
-			OutputResult temp_out; //机动的信息，机动后的信息
-			temp_out.action_ = 2;
-			temp_out.time_acc_ = t;
-			memcpy(temp_out.rv_acc_, rv_sat, 6 * sizeof(double));
-			for (int i = 0; i < 3; i++) temp_out.dv_[i] = 0.0;
-			temp_out.point_id_ = j + 1;
-			temp.node_info_.push_back(temp_out);
-			child_node_problems.push_back(temp);
+		double target_r0[3];
+		get_target_R(target_id, t_f_possible, target_r0);
+
+		double rv0[6];
+		memcpy(rv0, node->problem_.node_info_.back().rv_acc_, 6 * sizeof(double));
+		t0 = node->problem_.node_info_.back().time_acc_;
+
+		//轨道要素检查
+		int flag;
+		double coe0[6], a, e, hmin, hmax;
+		rv2coe(flag, coe0, rv0, mu_km_s);
+		a = coe0[0]; e = coe0[1];
+		hmin = a * (1 - e) - Re_km;
+		hmax = a * (1 + e) - Re_km;
+		if (hmin < 201.0 || hmax > 999.0) {
 			continue;
 		}
 
-		bool total_flag = false;						// 记录是否有打靶成功过，有则记1
-		for (int bra = 0; bra < 2; bra++) {
-			for (int NR = 0; NR < 6; NR++) {
-				double t0, h0, rv0[6], coe0[6], lambda0, phi0, tf, dv[3], a, e, hmin, hmax;
-				int flag;
+		//升降轨两种情况
+		auto dv_infos = obs_shooting_zzmodified(t0, rv0, target_id);
 
-				memcpy(rv0, node->problem_.node_info_.back().rv_acc_, 6 * sizeof(double));
-				t0 = node->problem_.node_info_.back().time_acc_;
-				tf = t0 + 10800.0;						//从3h开始扰动，瞎给的，用的是张刚论文的方法给初值，tf除了ship随便取
-
-				rv2coe(flag, coe0, rv0, mu_km_s);
-				a = coe0[0]; e = coe0[1];
-				hmin = a * (1 - e) - Re_km;
-				hmax = a * (1 + e) - Re_km;
-				if (hmin < 201.0 || hmax > 999.0) {
-					continue;
-				}
-
-				double rvf[6];
-
-				// 打靶到下一个目标，适配visit_gap
-				obs_shooting(flag, dv, tf, rvf, t0, rv0, j, NR, bra);
-
-				if (flag != 1) {
-					continue;
-				}
-				else {
-					total_flag = 1;
-				}
-
-				if (tf - t0 > 10800.0) {
-					// 打靶时间过长
-					total_flag = 0;
-					continue;
-				}
-				
-				double rv1[6], rv2[6];
-				memcpy(rv1, rv0, 6 * sizeof(double));
-				for (int i = 0; i < 3; i++) rv1[i + 3] += dv[i];
-
-				// 超过两天则只积分到172800s
-				if (tf > 2.0 * 86400.0) {
-					tf = 2.0 * 86400.0;
-					propagate_j2(rv1, rvf, t0, tf);
-				}
-
-
-				//TODO: 将结果输出
-				Node_problem temp;
-				OutputResult temp_out, temp_out2, temp_out3; //机动的信息，机动后的信息
-
-				temp_out.action_ = 1;
-				for (int i = 0; i < 3; i++)  rv0[3 + i] += dv[i];
-				memcpy(temp_out.rv_acc_, rv0, 6 * sizeof(double));
-				memcpy(temp_out.dv_, dv, 3 * sizeof(double));
-
-				/*if (V_Norm2(dv, 3) > 0.001 && V_Norm2(dv, 3) < 1.0) {
-					std::cout << "大脉冲点，脉冲为" << V_Norm2(dv, 3) << std::endl;
-				}*/
-
-				temp_out.time_acc_ = t0;
-				temp_out.point_id_ = 0;
-				temp.node_info_.push_back(temp_out);
-
-				temp_out2.action_ = 2;
-				temp_out2.time_acc_ = tf;
-				memcpy(temp_out2.rv_acc_, rvf, 6 * sizeof(double));
-				for (int i = 0; i < 3; i++) temp_out2.dv_[i] = 0.0;
-				if (fabs(tf - 86400.0 * 2.0) < 1.0e-5) {
-					temp_out2.action_ = 3;
-					temp_out2.point_id_ = 0;
-				}
-				else {
-					temp_out2.point_id_ = j + 1;
-				}
-
-				//最后一个放tf的子节点
-				temp.node_info_.push_back(temp_out2);
-				
-				child_node_problems.push_back(temp);
+		//注意此处dv_infos有多种可能，因此需要保存不同时间的最小速度增量的
+		// 使用哈希表(key=时间tf(取分钟), value=当前时间下二范数最小的 dv_shooding_info)
+		std::unordered_map<int, dv_shooding_info> unique_dv_infos;
+		unique_dv_infos.reserve(dv_infos.size());
+		for (auto& info : dv_infos){
+			auto it = unique_dv_infos.find(static_cast<int>(round(info.tf/60.0)));
+			if (it == unique_dv_infos.end()){ // 还没有出现过这个时间，就直接插入
+				unique_dv_infos[static_cast<int>(round(info.tf / 60.0))] = info;
 			}
-
+			else { // 已有相同时间，看谁的速度增量二范数更小
+				if (V_Norm2(info.dv, 3) < V_Norm2(it->second.dv, 3)) {
+					it->second = info;
+				}
+			}
+		}
+		// 整理出去重后的结果存放到一个新 vector
+		dv_infos.clear();
+		for (auto& kv : unique_dv_infos)
+		{
+			dv_infos.push_back(kv.second);
 		}
 
-		// 打靶全都失败，则无机动验一次能否可见，如果非空则取第一个值，否则就是真看不到
-		// 如果是求解漏了，可以扩展短时的点，如果就是不可能看到，也可以保证一直有点可以扩展，停止只会因为解不可行
-		if (!total_flag) {
-			double t0 = node->problem_.node_info_.back().time_acc_;
-			double rv0[6], rvf[6];
-			memcpy(rv0, node->problem_.node_info_.back().rv_acc_, 6 * sizeof(double));
-			const int id = j;
-			std::vector<double> time_list;
-			AccessPointCertainObjects(rv0, t0, t0 + 18000.0, 60.0, id, time_list);
-			
-			if (time_list.empty()) {
-				continue;
+		for(int i = 0 ; i< dv_infos.size(); i++)
+		{
+			double tf = dv_infos[i].tf;
+			double dv[3];
+			memcpy(dv, dv_infos[i].dv, 3 * sizeof(double));
+			double rvf[6]; memcpy(rvf, rv0, 6 * sizeof(double));
+
+			// 打靶时间过长
+			double dt_max = 3.0 * 3600.0;  //阈值
+			if (tf - t0 > dt_max) {continue;}
+			double dv_max = 1.0; //1km/s
+			if(V_Norm2(dv, 3) > dv_max) { continue; }
+
+			// 超过两天则只积分到172800s
+			if (tf > 2.0 * 86400.0) {
+				tf = 2.0 * 86400.0;
+				double rv1[6];
+				memcpy(rv1, rv0, 6 * sizeof(double));
+				for (int i = 0; i < 3; i++) rv1[i + 3] += dv[i];
+				propagate_j2(rv1, rvf, t0, tf);
 			}
 
-			
-			if (time_list[0] != t0) {
-				propagate_j2(rv0, rvf, t0, time_list[0]);
+			//检测中间是否有可见的情况
+			double rv1[6];
+			memcpy(rv1, rv0, 6 * sizeof(double));
+			for (int i = 0; i < 3; i++) rv1[i + 3] += dv[i];
 
-				Node_problem temp;
-				OutputResult temp_out; //机动的信息，机动后的信息
-				temp_out.action_ = 2;
-				temp_out.point_id_ = j + 1;
-				temp_out.time_acc_ = time_list[0];
-				memcpy(temp_out.rv_acc_, rvf, 6 * sizeof(double));
+			propagate_j2(rv1, rv1, t0, t0 + 60.0);
 
-				temp.node_info_.push_back(temp_out);
-				child_node_problems.push_back(temp);
+			std::vector<std::vector<double>> accesstime_between; // 输出：可见性结果列表
+			AccessPointObjects(rv1, t0 + 60.0, tf-60.0, 60.0, 21, accesstime_between, 19.99 * D2R);
+
+			// 搜索id_time_low中时间最小的点
+			std::pair<int, double> min_time_point = std::make_pair(100, 1.0e10);
+			for(int id_x = 0; id_x < accesstime_between.size(); id_x++)
+			{
+				if (accesstime_between[id_x].size() > 0)
+				{
+					if (accesstime_between[id_x][0] < min_time_point.second)
+					{
+						min_time_point = std::make_pair(id_x, accesstime_between[id_x][0]);
+					}
+				}
 			}
-			else {
-				propagate_j2(rv0, rvf, t0, time_list[1]);
-
-				Node_problem temp;
-				OutputResult temp_out; //机动的信息，机动后的信息
-				temp_out.action_ = 2;
-				temp_out.point_id_ = j + 1;
-				temp_out.time_acc_ = time_list[1];
-				memcpy(temp_out.rv_acc_, rvf, 6 * sizeof(double));
-
-				temp.node_info_.push_back(temp_out);
-				child_node_problems.push_back(temp);
+			if(min_time_point.first < 100)
+			{
+				propagate_j2(rv1, rvf, t0 + 60.0, min_time_point.second);
+				Node_problem node_problem;
+				calculate_node_problem_info(min_time_point.first, t0, rv0, min_time_point.second, dv, rvf, node_problem);
+				child_node_problems.push_back(node_problem);
+			}
+			else
+			{
+				Node_problem node_problem;
+				calculate_node_problem_info(target_id, t0, rv0, tf, dv, rvf, node_problem);
+				child_node_problems.push_back(node_problem);
 			}
 		}
 	}
+
+
+
 	/*if (child_node_problems.empty()) {
 		std::cout << "无节点可扩展！" << std::endl;
 	}*/
@@ -526,7 +596,6 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 	int visited[TargetNum]{};                     //该tnc的已观测序列，初始化为0，完成重访任务后为1
 	std::vector<std::vector<double>> visible_timelist(21, std::vector<double>(0));	//该tnc的目标点访问时刻表
 	//std::cout << visible_timelist.size() << std::endl;
-	
 
 	//TODO：扩展规则会改，此处暂时不更新visited
 	double tf_max = 0.0;
@@ -537,8 +606,8 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 		tnc.tnc_[j]->return_node_sequence(solution_one_node);
 		Solution_one temp;
 		tnc.tnc_[j]->getback_problem(solution_one_node, temp);
-		if(temp.node_info_[temp.node_info_.size() - 1].time_acc_ < tf_min) tf_min = temp.node_info_[temp.node_info_.size() - 1].time_acc_;
-		if(temp.node_info_[temp.node_info_.size() - 1].time_acc_ > tf_max) tf_max = temp.node_info_[temp.node_info_.size() - 1].time_acc_;
+		if(temp.node_info_.back().time_acc_ < tf_min) tf_min = temp.node_info_.back().time_acc_;
+		if(temp.node_info_.back().time_acc_ > tf_max) tf_max = temp.node_info_.back().time_acc_;
 
 		for (int k = 0; k < temp.node_info_.size(); k++) {
 			if (temp.node_info_[k].action_ == 2) {
@@ -593,14 +662,14 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 		idx++;
 		if (idx != TargetNum) {
 			if (*iter > 6.0) {
-				std::cout << "目标" << idx << "的最大重访时间已经达到" << *iter << "h" << std::endl;
+				//std::cout << "目标" << idx << "的最大重访时间已经达到" << *iter << "h" << std::endl;
 				ifpossible = false;
 			}
 			
 		}
 		else {
 			if (*iter > 3.0) {
-				std::cout << "目标" << idx << "的最大重访时间已经达到" << *iter << "h" << std::endl;
+				//std::cout << "目标" << idx << "的最大重访时间已经达到" << *iter << "h" << std::endl;
 				ifpossible = false;
 			}
 			

@@ -461,11 +461,12 @@ void nlopt_main(double (*ObjFun)(const std::vector<double>& X, std::vector<doubl
 	
 	double tol = 1e-5;
 	opter.set_xtol_abs(1e-8);
-	opter.set_ftol_abs(1e-8);
+	opter.set_ftol_abs(1.0e-9);
 	opter.set_force_stop(1e-8);
 	opter.set_maxeval(maxstep);        //优化该次数后停止
 
-	//std::vector<double> dx{ 0.001,0.01 };
+	//std::vector<double> dx{ 5.0e-4, 5.0e-4, 5.0e-4, 1.0e-2 };
+	std::vector<double> dx{ 1.0e-4, 1.0e-4, 1.0e-4, 1.0e-3 };
 	std::vector<double> lb(X.size()), ub(X.size());     //下界 //上界
 	for (int i =0; i < X.size(); i++)
 	{
@@ -473,18 +474,19 @@ void nlopt_main(double (*ObjFun)(const std::vector<double>& X, std::vector<doubl
 	}
 	opter.set_lower_bounds(lb);
 	opter.set_upper_bounds(ub);
-	//opter.set_initial_step(dx); //设置初始步长,也可以不设置
+	opter.set_initial_step(dx); //设置初始步长,也可以不设置
 	opter.set_min_objective(ObjFun, f_data);   //指标
 
 
-
-	
 	nlopt::result res = opter.optimize(X, f);
-	switch (res) {
-	case nlopt::SUCCESS: { std::cout << res << std::endl; }
-	//case nlopt::MAXEVAL_REACHED: { std::cout << "Maxeval Reached" << std::endl; }
-	default:break;
-	}
+	int fexevl = opter.get_numevals();
+	
+
+	//switch (res) {
+	//case nlopt::SUCCESS: { std::cout << res << std::endl; }
+	////case nlopt::MAXEVAL_REACHED: { std::cout << "Maxeval Reached" << std::endl; }
+	//default:break;
+	//}
 	//int numers = opter.get_numevals();
 
 }

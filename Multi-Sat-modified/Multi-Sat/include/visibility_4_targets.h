@@ -20,7 +20,8 @@
  */
 bool is_target_visible(const double* rv_sat, const double* rv_target, double half_cone_angle_rad);
 
-
+double angle_target_visible(const double* rv_sat, const double* rv_target, double half_cone_angle_rad);
+double angle_earth_view_angle(const double* rv_sat, const double* rv_target);
 /**
  * @brief 计算多个地面目标在一段时间内对卫星的可见性。
  *
@@ -71,6 +72,15 @@ void AccessPointCertainObjects(
     const double half_cone_angle = 20.0 * D2R
 );
 
+void AccessPointObjects_linearJ2(
+    const double rv0[6],            // 初始卫星状态（位置和速度）
+    double t_start,           // 开始时间（秒）
+    double t_end,             // 结束时间（秒）
+    double dt,                // 时间步长（秒）
+    int num_targets,          // 目标数量
+    std::vector<std::vector<double>>& results, // 输出：可见性结果列表
+    const double half_cone_angle
+);
 
 /**
  * @brief 计算多个卫星对多个地面目标在一段时间内的可见性。

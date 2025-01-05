@@ -1068,6 +1068,7 @@ void j2mcoe02mcoef(const double* me0, const double dt, double* mef)
 	double dOmega = -1.5 * JRPn * ci;
 	double domega = 0.75 * JRPn * (5 * ci2 - 1);
 	double dm = n + 0.75 * JRPn * sqrt(1 - e2) * (3 * ci2 - 1);
+
 	mef[0] = me0[0];
 	mef[1] = me0[1];
 	mef[2] = me0[2];
@@ -1098,7 +1099,7 @@ void j2rv02rvf(const double* rv0, const double dt, double* rvf)
 	j2mcoe02mcoef(mcoe0, dt, mcoef);
 
 	M2O(mcoef, ocoef);
-	coe2rv(flag, rvf, ocoef, muEarth);
+	coe2rv(flag, rvf, ocoef, muEarth );
 }
 
 int dynODE_j2(double t, const double* y, double* yp, const double* para)

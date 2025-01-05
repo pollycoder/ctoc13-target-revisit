@@ -239,28 +239,45 @@ int propagate_j2(double rv0[6], double rvf[6],  double t_start, double t_end, do
 }
 
 
-void propagate_j2linear(double* RV0, double* RVf, const double& t0, const double& tf) {
-	double rv0[6], rvf[6], coe0[6], coef[6];
-	memcpy(rv0, RV0, 6 * sizeof(double));
-	int flag;
-	rv2coe(flag, coe0, rv0, mu_km_s);
-	double a0 = coe0[0], e0 = coe0[1], inc0 = coe0[2], Omega0 = coe0[3], omega0 = coe0[4], f00 = coe0[5];
+//void propagate_j2linear(double* RV0, double* RVf, const double& t0, const double& tf) {
+//	double rv0[6], rvf[6], coe0[6], coef[6];
+//	memcpy(rv0, RV0, 6 * sizeof(double));
+//	int flag;
+//	rv2coe(flag, coe0, rv0, mu_km_s);
+//
+//
+//	coe02coef(flag, coe0, coe0, tf-t0, mu_km_s);
+//
+//	double a0 = coe0[0], e0 = coe0[1], inc0 = coe0[2], Omega0 = coe0[3], omega0 = coe0[4], f00 = coe0[5];
+//
+//	double n = sqrt(mu_km_s / a0 / a0 / a0);
+//	double p = a0 * (1 - e0 * e0);
+//
+//	double vOmega = -1.5 * J2 * (Re_km / p) * (Re_km / p) * n * cos(inc0);
+//	double vomega = 0.75 * J2 * (Re_km / p) * (Re_km / p) * n * (5 * cos(inc0) * cos(inc0) - 1);
+//	double vf = 0.75 * J2 * (Re_km / p) * (Re_km / p) * sqrt(1 - e0 * e0) * n * (2 - 3 * sin(inc0) * sin(inc0));// +n;
+//
+//	double dOmega = vOmega * (tf - t0);
+//	double domega = vomega * (tf - t0);
+//	double df = vf * (tf - t0);
+//
+//	
+//
+//	double a = a0, e = e0, inc = inc0, Omega = Omega0 + dOmega, omega = omega0 + domega, f0 = f00 + df;
+//	coef[0] = a; coef[1] = e; coef[2] = inc; coef[3] = Omega; coef[4] = omega; coef[5] = f0;
+//	coe2rv(flag, rvf, coef, mu_km_s);
+//	memcpy(RVf, rvf, 6 * sizeof(double));
+//}
 
-	double n = sqrt(mu_km_s / a0 / a0 / a0);
-	double p = a0 * (1 - e0 * e0);
-
-	double vOmega = -1.5 * J2 * (Re_km / p) * (Re_km / p) * n * cos(inc0);
-	double vomega = 0.75 * J2 * (Re_km / p) * (Re_km / p) * n * (5 * cos(inc0) * cos(inc0) - 1);
-	double vf = 0.75 * J2 * (Re_km / p) * (Re_km / p) * sqrt(1 - e0 * e0) * n * (2 - 3 * sin(inc0) * sin(inc0)) + n;
-
-	double dOmega = vOmega * (tf - t0);
-	double domega = vomega * (tf - t0);
-	double df = vf * (tf - t0);
-
-	double a = a0, e = e0, inc = inc0, Omega = Omega0 + dOmega, omega = omega0 + domega, f0 = f00 + df;
-	coef[0] = a; coef[1] = e; coef[2] = inc; coef[3] = Omega; coef[4] = omega; coef[5] = f0;
-	coe2rv(flag, rvf, coef, mu_km_s);
-	memcpy(RVf, rvf, 6 * sizeof(double));
+// 由现有程序提供
+void propagate_linearJ2(const double* rv0, double* rvf, double t0, double tf)
+{
+	double rv0_km[6];
+	memcpy(rv0_km, rv0, 6 * sizeof(double));
+	double rvf_2body_km[6];
+	V_Multi(rv0_km, rv0_km, 1000.0, 6);
+	j2rv02rvf(rv0_km, tf - t0, rvf_2body_km);
+	V_Divid(rvf, rvf_2body_km, 1000.0, 6);
 }
 
 void get_target_geogetic(int id, double t, double* Geodetic)

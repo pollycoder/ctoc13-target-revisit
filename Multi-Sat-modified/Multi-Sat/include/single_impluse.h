@@ -33,6 +33,7 @@
 ****************************************************************************/
 
 
+
 //单脉冲机动(指定天数的最小脉冲解)
 //输入：
 //		m0:			初始质量，kg
@@ -106,6 +107,15 @@ void single_imp_ship(const double m0, const double t0, const double* rv0, const 
 void single_imp(const double m0, const double t0, const double* rv0, const double lambda0, const double phi0, const double dt,
 	int& flag0, double& mf, double& tf, double* dv, int& NR, const int branch, const int sign);
 
+void single_imp_zzmodified(const double m0, const double t0, const double* rv0, const double lambda0, const double phi0, const int Day,
+	int& flag0, double& mf, double& tf, double* dv, const int& branch);
+struct dv_shooding_info
+{
+	double dv[3];
+	double tf;    //tf是时刻，不是dt
+	double RVF[6];   //tf时刻的RV
+};
+std::vector<dv_shooding_info>  obs_shooting_zzmodified(const double& t0, const double* RV0, const int& target_id);
 
 //CTOC13：利用J2Lambert问题，进行单次脉冲修正
 //TODO：需要改成输入轨道高度的情况，以便Lambert优化器优化高度和实际覆盖的目标点

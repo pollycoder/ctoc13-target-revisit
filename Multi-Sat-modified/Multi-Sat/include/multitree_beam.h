@@ -53,8 +53,9 @@ public:
 		problem_ = a;
 
 		e->child_.push_back(this);       //父指向子节点
-		
-		this->key_ = a.node_info_.back().point_id_;     //该节点的特征码赋值
+
+		int t_60_int = static_cast<int>(round(a.node_info_.back().time_acc_ / 60.0));
+		this->key_ = a.node_info_.back().point_id_*1e4 + t_60_int;     //该节点的特征码赋值
 		inTNCcounter_ = 0;
 		omp_init_lock(&lock);
 	}

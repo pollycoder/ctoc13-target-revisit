@@ -24,7 +24,7 @@
 class OutputResult
 {
 public:
-	int action_;		//标志位，‘0’表示轨道参数初始行，‘1’表示施加脉冲，‘2’表示观测、
+	int action_;		//标志位，‘0’表示轨道参数初始行，‘1’表示施加脉冲，‘2’表示观测、 ‘3’表示中间观测
 	double time_acc_;   //可见时刻
 	double rv_acc_[6];  //可见时刻位置速度
 	double dv_[3];		//速度增量

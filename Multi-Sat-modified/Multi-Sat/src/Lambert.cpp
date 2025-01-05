@@ -1712,7 +1712,6 @@ void lambert(double* v1, double* v2, double& a, double& e, const double* R1, con
 		iter = i;
 		x = exp(xnew) - 1.0;
 	}
-
 	////MULTI REV --> (2 SOL) SEPARATING RIGHT AND LEFT BRANCH
 	else
 	{
@@ -1748,22 +1747,22 @@ void lambert(double* v1, double* v2, double& a, double& e, const double* R1, con
 		x = atan(xnew) * 2.0 / 3.1415926535897932384626433832795;
 		iter = i;
 	}
-	if (iter >= Maxiter)
-	{
-		//		cout<<"Solution does not seem to be converging"<<endl;
-		flag = 0;
+	//if (iter >= Maxiter)
+	//{
+	//	//		cout<<"Solution does not seem to be converging"<<endl;
+	//	flag = 0;
 
-		//20211017晚更改，求解失败速度增量返回很大的数
-		v1[0] = 10000.0;
-		v1[1] = 10000.0;
-		v1[2] = 10000.0;
-		v2[0] = 10000.0;
-		v2[1] = 10000.0;
-		v2[2] = 10000.0;
-		//更改结束
+	//	//20211017晚更改，求解失败速度增量返回很大的数
+	//	v1[0] = 10000.0;
+	//	v1[1] = 10000.0;
+	//	v1[2] = 10000.0;
+	//	v2[0] = 10000.0;
+	//	v2[1] = 10000.0;
+	//	v2[2] = 10000.0;
+	//	//更改结束
 
-		return;
-	}
+	//	return;
+	//}
 	//The solution has been evaluated in terms of log(x+1) or tan(x*pi/2), we
 	//now need the conic. As for transfer angles near to pi the lagrange
 	//coefficient technique goes singular (dg approaches a zero/zero that is
