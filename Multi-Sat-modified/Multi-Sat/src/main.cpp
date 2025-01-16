@@ -59,7 +59,7 @@ void output_result(std::vector<std::tuple<std::vector<double>, std::vector<std::
 
 // ¶à¿ÃÊ÷ËÑË÷£¨ÖØÆô£©
 void multitree_search() {
-	MultiTree multi_tree(1, 4, 100, dv_max);
+	MultiTree multi_tree(10000, 4, 100, dv_max);
 
 	auto beforeTime = std::chrono::steady_clock::now();
 	multi_tree.Run();

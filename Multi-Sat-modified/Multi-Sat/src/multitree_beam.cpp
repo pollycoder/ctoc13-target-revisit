@@ -52,8 +52,12 @@ inline bool MultiTree::SortTNC(const TNC& a, const TNC& b)
 		//else {
 		//	return false;
 		//}
+	double coef_t = 1.0;
+	double coef_dv = 1.0e6;
+	double J_a = coef_t * a.op_index_.time_min + coef_dv * a.op_index_.total_impulse_;
+	double J_b = coef_t * b.op_index_.time_min + coef_dv * b.op_index_.total_impulse_;
 
-	return a.op_index_.total_impulse_ < b.op_index_.total_impulse_;
+	return J_a < J_b;
 	//return a.op_index_.time_cost < b.op_index_.time_cost;
 	
 }
@@ -568,7 +572,7 @@ inline  void children_nodes(Node* node, const int* visited, std::vector<Node_pro
 			{
 				Node_problem node_problem;
 				calculate_node_problem_info(target_id, t0, rv0, tf, dv, rvf, node_problem);
-				child_node_problems.push_back(node_problem);
+				//child_node_problems.push_back(node_problem);
 			}
 		}
 	}
@@ -662,14 +666,14 @@ void MultiTree::Expansion_one_TNC(const TNC& tnc, std::vector<TNC>& newTNCs)
 		idx++;
 		if (idx != TargetNum) {
 			if (*iter > 6.0) {
-				//std::cout << "目标" << idx << "的最大重访时间已经达到" << *iter << "h" << std::endl;
+				std::cout << "目标" << idx << "的最大重访时间已经达到" << *iter << "h" << std::endl;
 				ifpossible = false;
 			}
 			
 		}
 		else {
 			if (*iter > 3.0) {
-				//std::cout << "目标" << idx << "的最大重访时间已经达到" << *iter << "h" << std::endl;
+				std::cout << "目标" << idx << "的最大重访时间已经达到" << *iter << "h" << std::endl;
 				ifpossible = false;
 			}
 			
